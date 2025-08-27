@@ -39,6 +39,17 @@ Analyze this Rust for Linux kernel patchset and provide a comprehensive markdown
       [Key talking points for external discussions]
     </structure>
 
+    <key_information_to_extract>
+      From the patch data, identify:
+      1. Patch version number and iteration history
+      2. Author and key reviewers/maintainers involved
+      3. Subsystem affected (mm, fs, net, drivers, etc.)
+      4. Lines of code changed (scale indicator)
+      5. Discussion tone (supportive, contentious, silent)
+      6. Technical blockers mentioned
+      7. Performance or safety improvements claimed
+    </key_information_to_extract>
+
     <guidelines>
       - Skip sections that don't contain meaningful information
       - Focus on what requires director attention or stakeholder communication
@@ -46,9 +57,20 @@ Analyze this Rust for Linux kernel patchset and provide a comprehensive markdown
       - Highlight strategic advances in Rust-for-Linux adoption
       - Flag quality issues, conflicts, or unusual patterns
     </guidelines>
+
+    <escalation_triggers>
+      Flag for immediate attention if:
+      - Linus, Greg or key maintainers express concerns
+      - Security implications mentioned
+      - Breaks existing userspace (ABI changes)
+      - Conflicts with pending C subsystem changes
+      - First Rust implementation in a new subsystem
+    </escalation_triggers>
   </format_requirements>
 </analysis_request>
 
+<patch_data_and_discussion>
 {analysis_context}
+</patch_data_and_discussion>
 
 Provide an executive brief following the structure above, including only sections with meaningful content.
