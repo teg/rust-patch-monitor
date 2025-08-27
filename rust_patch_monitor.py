@@ -737,22 +737,22 @@ def analyze_bulk(days, max_series, output_dir, claude_key, no_comments, summary_
 
         # Generate summary report if requested
         if summary_report:
-            click.echo(f"\nGenerating summary report...")
+            click.echo("\nGenerating summary report...")
             summary_path = timestamp_dir / "summary.md"
 
             with open(summary_path, "w") as f:
-                f.write(f"# Rust for Linux Patch Analysis Summary\n\n")
+                f.write("# Rust for Linux Patch Analysis Summary\n\n")
                 f.write(f"**Generated**: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
                 f.write(f"**Period**: Last {days} days\n")
                 f.write(f"**Analyzed**: {len(analysis_results)}/{len(series_to_analyze)} series\n\n")
 
                 if failed_analyses:
-                    f.write(f"## Failed Analyses ({len(failed_analyses)})\n\n")
+                    f.write("## Failed Analyses ({})\n\n".format(len(failed_analyses)))
                     for series, error in failed_analyses:
                         f.write(f"- **{series.name}**: {error}\n")
                     f.write("\n")
 
-                f.write(f"## Successful Analyses ({len(analysis_results)})\n\n")
+                f.write("## Successful Analyses ({})\n\n".format(len(analysis_results)))
                 for result in analysis_results:
                     series = result["series"]
                     f.write(f"### {series.name}\n\n")
@@ -765,7 +765,7 @@ def analyze_bulk(days, max_series, output_dir, claude_key, no_comments, summary_
             click.echo(f"✓ Summary saved to {summary_path}")
 
         # Auto-generate web UI data
-        click.echo(f"\nGenerating web UI data...")
+        click.echo("\nGenerating web UI data...")
         web_data_path = Path("web-ui/src/data/patches.json")
 
         # Create enhanced export data with analysis summaries
@@ -841,7 +841,7 @@ def analyze_bulk(days, max_series, output_dir, claude_key, no_comments, summary_
         click.echo(f"✓ Web UI data saved to {web_data_path}")
 
         # Final summary
-        click.echo(f"\n🎉 Bulk analysis complete!")
+        click.echo("\n🎉 Bulk analysis complete!")
         click.echo(f"✓ Analyzed: {len(analysis_results)}/{len(series_to_analyze)} series")
         click.echo(f"✗ Failed: {len(failed_analyses)} series")
         click.echo(f"📁 Reports: {timestamp_dir}")
@@ -891,11 +891,11 @@ def export_json(days, include_applied, output):
                     try:
                         patch = client.get_patch_content(patch_ref["id"])
                         patches.append(patch)
-                    except:
+                    except Exception:
                         continue  # Skip failed patches
 
                 engagement = analyzer._analyze_engagement(series, patches)
-            except:
+            except Exception:
                 engagement = {
                     "version": 1,
                     "days_since_posting": 0,
