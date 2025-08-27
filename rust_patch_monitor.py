@@ -739,7 +739,8 @@ def analyze_bulk(days, max_series, output_dir, claude_key, no_comments, summary_
                     f.write(f"**Patches**: {series.total}\n")
                     f.write(f"**Patchwork URL**: {series.web_url}\n\n")
                     f.write(
-                        f"**Token Usage**: {token_usage['input_tokens']} input / {token_usage['output_tokens']} output\n\n"
+                        f"**Token Usage**: {token_usage['input_tokens']} input / "
+                        f"{token_usage['output_tokens']} output\n\n"
                     )
                     f.write("---\n\n")
                     f.write(analysis_text)

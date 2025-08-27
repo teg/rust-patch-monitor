@@ -246,8 +246,6 @@ class TestTokenUsageCapture:
 
     def test_json_export_includes_token_metadata(self):
         """Test that JSON export includes aggregated token usage in metadata"""
-        import tempfile
-        import json
 
         # Create a temporary analysis result with token usage
         analysis_results = [
