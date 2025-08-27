@@ -220,10 +220,10 @@ class ClaudeAnalyzer:
         """Load the prompt template from the external file"""
         # Get the directory of the current script
         script_dir = os.path.dirname(os.path.abspath(__file__))
-        template_path = os.path.join(script_dir, 'prompt_template.txt')
-        
+        template_path = os.path.join(script_dir, "prompt_template.txt")
+
         try:
-            with open(template_path, 'r', encoding='utf-8') as f:
+            with open(template_path, "r", encoding="utf-8") as f:
                 return f.read()
         except FileNotFoundError:
             # Fallback to inline prompt if template file is missing
@@ -434,10 +434,7 @@ class ClaudeAnalyzer:
 
         # Load prompt template and format it with context
         prompt_template = self._load_prompt_template()
-        prompt = prompt_template.format(
-            analysis_context=analysis_context,
-            series=series
-        )
+        prompt = prompt_template.format(analysis_context=analysis_context, series=series)
 
         response = self.client.messages.create(
             model="claude-sonnet-4-20250514",
