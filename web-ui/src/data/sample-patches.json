@@ -1,0 +1,194 @@
+{
+  "metadata": {
+    "generated_at": "2025-08-27T16:30:00.000Z",
+    "project": "rust-for-linux",
+    "days_back": 90,
+    "include_applied": false,
+    "total_series": 5,
+    "analysis_method": "claude_bulk",
+    "token_usage": {
+      "total_input_tokens": 8500,
+      "total_output_tokens": 950,
+      "model": "claude-sonnet-4-20250514",
+      "analysis_count": 5
+    }
+  },
+  "patch_series": [
+    {
+      "id": 958022,
+      "name": "[v3] rust: kernel: add device abstractions",
+      "date": "2025-08-20T10:00:00Z",
+      "submitter": {
+        "name": "Alice Author",
+        "email": "alice@rust-project.org"
+      },
+      "total_patches": 2,
+      "web_url": "https://patchwork.kernel.org/project/rust-for-linux/list/?series=958022",
+      "engagement": {
+        "version": 3,
+        "days_since_posting": 7,
+        "endorsements": {
+          "signed_off_by": 1,
+          "acked_by": 1,
+          "reviewed_by": 2,
+          "tested_by": 0
+        }
+      },
+      "analysis": {
+        "status": "Ready",
+        "significance": "High - foundational abstractions for device driver development",
+        "summary": "This patchset introduces core device abstractions that enable Rust drivers to safely interact with the kernel device model. The third iteration shows strong community engagement with reviews from key maintainers.",
+        "technical_context": "Builds upon existing Rust kernel infrastructure to provide type-safe wrappers around device operations. Critical for enabling broader Rust driver adoption.",
+        "patches": [
+          {
+            "id": 1,
+            "name": "rust: kernel: add Device abstraction",
+            "description": "Core Device trait and implementation"
+          },
+          {
+            "id": 2, 
+            "name": "rust: kernel: add DeviceDriver trait",
+            "description": "Generic driver interface for device operations"
+          }
+        ],
+        "issues": []
+      }
+    },
+    {
+      "id": 957891,
+      "name": "[v2] rust: Add support for GPIO drivers",
+      "date": "2025-08-18T14:30:00Z",
+      "submitter": {
+        "name": "Bob Developer",
+        "email": "bob@kernel.org"
+      },
+      "total_patches": 4,
+      "web_url": "https://patchwork.kernel.org/project/rust-for-linux/list/?series=957891",
+      "engagement": {
+        "version": 2,
+        "days_since_posting": 9,
+        "endorsements": {
+          "signed_off_by": 1,
+          "acked_by": 0,
+          "reviewed_by": 1,
+          "tested_by": 1
+        }
+      },
+      "analysis": {
+        "status": "Under Review",
+        "significance": "Medium - enables Rust GPIO subsystem support",
+        "summary": "Second iteration of GPIO driver support showing good technical progress. One maintainer review and successful testing indicate solid implementation, though additional acks needed.",
+        "technical_context": "Extends Rust kernel infrastructure to support GPIO operations. Important for embedded and IoT use cases where Rust safety guarantees are valuable.",
+        "patches": [
+          {"id": 1, "name": "rust: Add GPIO chip abstraction", "description": "Core GPIO chip interface"},
+          {"id": 2, "name": "rust: Add GPIO line operations", "description": "Individual GPIO line control"},
+          {"id": 3, "name": "rust: Add GPIO interrupt support", "description": "Interrupt handling for GPIO events"},
+          {"id": 4, "name": "rust: Add GPIO driver example", "description": "Example implementation and tests"}
+        ],
+        "issues": ["Needs additional maintainer acks before merge"]
+      }
+    },
+    {
+      "id": 957654,
+      "name": "rust: kernel: Add memory management helpers",
+      "date": "2025-08-15T09:15:00Z",
+      "submitter": {
+        "name": "Carol Maintainer",
+        "email": "carol@rust-for-linux.org"
+      },
+      "total_patches": 1,
+      "web_url": "https://patchwork.kernel.org/project/rust-for-linux/list/?series=957654",
+      "engagement": {
+        "version": 1,
+        "days_since_posting": 12,
+        "endorsements": {
+          "signed_off_by": 1,
+          "acked_by": 2,
+          "reviewed_by": 3,
+          "tested_by": 1
+        }
+      },
+      "analysis": {
+        "status": "Ready to Merge",
+        "significance": "High - critical memory safety improvements",
+        "summary": "Excellent community engagement with multiple maintainer acks and thorough reviews. Memory management helpers are fundamental infrastructure with broad impact.",
+        "technical_context": "Provides safe abstractions for kernel memory allocation patterns. Essential for preventing memory safety bugs in Rust kernel code.",
+        "patches": [
+          {"id": 1, "name": "rust: kernel: Add memory management helpers", "description": "Safe wrappers for kmalloc, page allocation, and DMA mapping"}
+        ],
+        "issues": []
+      }
+    },
+    {
+      "id": 957123,
+      "name": "[RFC v4] rust: Add network driver framework",
+      "date": "2025-08-10T16:45:00Z",
+      "submitter": {
+        "name": "David Network",
+        "email": "david@networkdev.org"
+      },
+      "total_patches": 8,
+      "web_url": "https://patchwork.kernel.org/project/rust-for-linux/list/?series=957123",
+      "engagement": {
+        "version": 4,
+        "days_since_posting": 17,
+        "endorsements": {
+          "signed_off_by": 1,
+          "acked_by": 1,
+          "reviewed_by": 5,
+          "tested_by": 2
+        }
+      },
+      "analysis": {
+        "status": "Strategic Development",
+        "significance": "Very High - enables Rust networking stack",
+        "summary": "Ambitious RFC showing strong technical interest with extensive reviews. Fourth iteration demonstrates iterative improvement and community collaboration on complex networking abstractions.",
+        "technical_context": "Large-scale framework for Rust network drivers. Highly complex due to networking stack integration requirements and performance constraints.",
+        "patches": [
+          {"id": 1, "name": "rust: Add network device abstraction", "description": "Core netdev interface"},
+          {"id": 2, "name": "rust: Add SKB handling", "description": "Socket buffer management"},
+          {"id": 3, "name": "rust: Add TX/RX queue management", "description": "Queue abstractions"},
+          {"id": 4, "name": "rust: Add network statistics", "description": "Stats and monitoring"},
+          {"id": 5, "name": "rust: Add ethtool support", "description": "Configuration interface"},
+          {"id": 6, "name": "rust: Add network driver example", "description": "Reference implementation"},
+          {"id": 7, "name": "rust: Add network driver tests", "description": "Test suite"},
+          {"id": 8, "name": "rust: Add documentation", "description": "API documentation"}
+        ],
+        "issues": ["Still RFC status - needs more real-world testing", "Performance validation required"]
+      }
+    },
+    {
+      "id": 956789,
+      "name": "rust: Fix memory safety issues in drivers",
+      "date": "2025-08-05T11:20:00Z",
+      "submitter": {
+        "name": "Eve Security",
+        "email": "eve@security.kernel.org"
+      },
+      "total_patches": 3,
+      "web_url": "https://patchwork.kernel.org/project/rust-for-linux/list/?series=956789",
+      "engagement": {
+        "version": 1,
+        "days_since_posting": 22,
+        "endorsements": {
+          "signed_off_by": 1,
+          "acked_by": 3,
+          "reviewed_by": 2,
+          "tested_by": 0
+        }
+      },
+      "analysis": {
+        "status": "Stalled",
+        "significance": "Critical - security vulnerability fixes",
+        "summary": "Important security fixes with strong maintainer support but stalled due to lack of testing. Critical issues that need prompt attention and validation.",
+        "technical_context": "Addresses memory safety vulnerabilities discovered in existing Rust driver code. Fixes unsafe code patterns that could lead to kernel crashes or security issues.",
+        "patches": [
+          {"id": 1, "name": "rust: Fix use-after-free in device cleanup", "description": "Prevents UAF during device removal"},
+          {"id": 2, "name": "rust: Fix buffer overflow in driver probe", "description": "Bounds checking for probe data"},
+          {"id": 3, "name": "rust: Fix race condition in interrupt handler", "description": "Proper synchronization for IRQ handling"}
+        ],
+        "issues": ["Needs testing validation - security critical", "Stalled for 3+ weeks without progress"]
+      }
+    }
+  ]
+}

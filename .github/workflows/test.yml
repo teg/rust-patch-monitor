@@ -104,15 +104,62 @@ jobs:
           safety-report.json
         retention-days: 30
 
+  # Web UI build and test
+  web-ui:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: ["18", "20"]
+
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Setup Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ matrix.node-version }}
+        cache: 'npm'
+        cache-dependency-path: web-ui/package-lock.json
+    
+    - name: Install web UI dependencies
+      working-directory: web-ui
+      run: npm ci
+    
+    - name: Build web UI
+      working-directory: web-ui
+      run: npm run build
+    
+    - name: Test web UI build output
+      working-directory: web-ui
+      run: |
+        # Verify build artifacts exist
+        if [ ! -d "dist" ]; then
+          echo "Build output directory not found"
+          exit 1
+        fi
+        if [ ! -f "dist/index.html" ]; then
+          echo "Main HTML file not found"
+          exit 1
+        fi
+        echo "Web UI build successful"
+    
+    - name: Upload web UI build artifacts
+      if: matrix.node-version == '20'
+      uses: actions/upload-artifact@v4
+      with:
+        name: web-ui-build
+        path: web-ui/dist/
+        retention-days: 7
+
   # Ensure all checks pass
   all-checks:
     runs-on: ubuntu-latest
-    needs: [test, lint]
+    needs: [test, lint, web-ui]
     if: always()
     steps:
     - name: Check all jobs
       run: |
-        if [[ "${{ needs.test.result }}" != "success" || "${{ needs.lint.result }}" != "success" ]]; then
+        if [[ "${{ needs.test.result }}" != "success" || "${{ needs.lint.result }}" != "success" || "${{ needs.web-ui.result }}" != "success" ]]; then
           echo "One or more required checks failed"
           exit 1
         fi
