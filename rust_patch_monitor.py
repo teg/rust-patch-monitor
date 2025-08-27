@@ -479,7 +479,17 @@ Provide an executive brief following the structure above, including only section
             messages=[{"role": "user", "content": prompt}],
         )
 
-        return response.content[0].text
+        # Capture token usage for cost tracking and transparency
+        token_usage = {
+            'input_tokens': response.usage.input_tokens,
+            'output_tokens': response.usage.output_tokens,
+            'model': 'claude-sonnet-4-20250514'
+        }
+
+        return {
+            'analysis': response.content[0].text,
+            'token_usage': token_usage
+        }
 
 
 @click.group()
@@ -609,21 +619,27 @@ def analyze(days, include_applied, no_comments, max_patches, claude_key, output)
         else:
             click.echo("Analyzing patchset with Claude (patch content only)...")
 
-        analysis = analyzer.analyze_patchset(
+        result = analyzer.analyze_patchset(
             selected_series,
             patches,
             client=client,
             include_comments=include_comments,
             max_patches=max_patches,
         )
+        
+        analysis_text = result['analysis']
+        token_usage = result['token_usage']
+        
+        # Display token usage for transparency
+        click.echo(f"📊 Token usage - Input: {token_usage['input_tokens']}, Output: {token_usage['output_tokens']}")
 
         if output:
             with open(output, "w") as f:
-                f.write(analysis)
+                f.write(analysis_text)
             click.echo(f"Analysis saved to {output}")
         else:
             click.echo("\n" + "=" * 80 + "\n")
-            click.echo(analysis)
+            click.echo(analysis_text)
 
     except Exception as e:
         click.echo(f"Error: {e}", err=True)
@@ -701,13 +717,18 @@ def analyze_bulk(days, max_series, output_dir, claude_key, no_comments, summary_
                 include_comments = not no_comments
                 click.echo(f"  Analyzing with Claude ({len(patches)} patches)...")
 
-                analysis = analyzer.analyze_patchset(
+                result = analyzer.analyze_patchset(
                     series,
                     patches,
                     client=client,
                     include_comments=include_comments,
                     max_patches=max_patches,
                 )
+                
+                analysis_text = result['analysis']
+                token_usage = result['token_usage']
+                
+                click.echo(f"  📊 Tokens: {token_usage['input_tokens']} in / {token_usage['output_tokens']} out")
 
                 # Save individual analysis
                 filename = f"series-{series.id}.md"
@@ -720,12 +741,13 @@ def analyze_bulk(days, max_series, output_dir, claude_key, no_comments, summary_
                     f.write(f"**Date**: {series.date.strftime('%Y-%m-%d')}\n")
                     f.write(f"**Patches**: {series.total}\n")
                     f.write(f"**Patchwork URL**: {series.web_url}\n\n")
+                    f.write(f"**Token Usage**: {token_usage['input_tokens']} input / {token_usage['output_tokens']} output\n\n")
                     f.write("---\n\n")
-                    f.write(analysis)
+                    f.write(analysis_text)
 
                 # Store for summary and web export
                 analysis_results.append(
-                    {"series": series, "analysis": analysis, "patches": patches, "filepath": str(filepath)}
+                    {"series": series, "analysis": analysis_text, "patches": patches, "filepath": str(filepath), "token_usage": token_usage}
                 )
 
                 click.echo(f"  ✓ Saved to {filepath}")
@@ -768,7 +790,11 @@ def analyze_bulk(days, max_series, output_dir, claude_key, no_comments, summary_
         click.echo("\nGenerating web UI data...")
         web_data_path = Path("web-ui/src/data/patches.json")
 
-        # Create enhanced export data with analysis summaries
+        # Calculate total token usage across all analyses
+        total_input_tokens = sum(result.get("token_usage", {}).get("input_tokens", 0) for result in analysis_results)
+        total_output_tokens = sum(result.get("token_usage", {}).get("output_tokens", 0) for result in analysis_results)
+        
+        # Create enhanced export data with analysis summaries and token usage
         export_data = {
             "metadata": {
                 "generated_at": datetime.now().isoformat(),
@@ -777,6 +803,12 @@ def analyze_bulk(days, max_series, output_dir, claude_key, no_comments, summary_
                 "include_applied": False,
                 "total_series": len(analysis_results),
                 "analysis_method": "claude_bulk",
+                "token_usage": {
+                    "total_input_tokens": total_input_tokens,
+                    "total_output_tokens": total_output_tokens,
+                    "model": "claude-sonnet-4-20250514",
+                    "analysis_count": len(analysis_results)
+                }
             },
             "patch_series": [],
         }
@@ -844,6 +876,7 @@ def analyze_bulk(days, max_series, output_dir, claude_key, no_comments, summary_
         click.echo("\n🎉 Bulk analysis complete!")
         click.echo(f"✓ Analyzed: {len(analysis_results)}/{len(series_to_analyze)} series")
         click.echo(f"✗ Failed: {len(failed_analyses)} series")
+        click.echo(f"📊 Token usage: {total_input_tokens} input / {total_output_tokens} output")
         click.echo(f"📁 Reports: {timestamp_dir}")
         click.echo(f"🌐 Web UI: {web_data_path}")
 
