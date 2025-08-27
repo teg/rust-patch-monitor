@@ -1,0 +1,73 @@
+.PHONY: help test test-unit test-integration test-golden lint format clean install dev-install
+
+help: ## Show this help message
+	@echo "Available commands:"
+	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2}'
+
+install: ## Install production dependencies
+	pip install -r requirements.txt
+
+dev-install: ## Install development dependencies
+	pip install -r requirements.txt
+	pip install -r test_requirements.txt
+	pip install black flake8 pre-commit
+
+test: ## Run all tests
+	python -m pytest test_rust_patch_monitor.py test_golden_masters.py -v
+
+test-unit: ## Run unit tests only
+	python -m pytest test_rust_patch_monitor.py::TestEngagementAnalysis -v
+	python -m pytest test_rust_patch_monitor.py::TestXMLGeneration -v
+	python -m pytest test_rust_patch_monitor.py::TestCLIInterface -v
+
+test-integration: ## Run integration tests only
+	python -m pytest test_rust_patch_monitor.py::TestPatchworkClient -v
+
+test-golden: ## Run golden master tests only
+	python -m pytest test_golden_masters.py::TestGoldenMasters -v
+
+test-cli: ## Test CLI functionality
+	python rust_patch_monitor.py --help
+	python rust_patch_monitor.py list-patches --help
+	python rust_patch_monitor.py analyze --help
+
+format: ## Format code with black
+	black rust_patch_monitor.py test_rust_patch_monitor.py test_golden_masters.py --line-length=120
+
+format-check: ## Check code formatting
+	black rust_patch_monitor.py test_rust_patch_monitor.py test_golden_masters.py --check --diff --line-length=120
+
+lint: ## Run linting
+	flake8 rust_patch_monitor.py test_rust_patch_monitor.py test_golden_masters.py --max-line-length=120
+
+lint-fix: format ## Format code and run linting
+	$(MAKE) lint
+
+check: ## Run all checks (tests, formatting, linting)
+	$(MAKE) test
+	$(MAKE) format-check
+	$(MAKE) lint
+	$(MAKE) test-cli
+
+clean: ## Clean temporary files
+	find . -type f -name "*.pyc" -delete
+	find . -type d -name "__pycache__" -delete
+	find . -type f -name "*.md.tmp" -delete
+	find . -type f -name "analysis_*.md" -delete
+	rm -rf .pytest_cache
+	rm -rf .coverage
+	rm -rf htmlcov
+
+pre-commit: ## Run pre-commit checks
+	$(MAKE) format
+	$(MAKE) test
+	$(MAKE) lint
+
+# Development workflow helpers
+dev-setup: dev-install ## Complete development setup
+	pre-commit install
+	@echo "Development environment ready!"
+	@echo "Run 'make check' to verify everything works."
+
+quick-test: ## Quick test run (unit tests only)
+	python -m pytest test_rust_patch_monitor.py::TestEngagementAnalysis test_rust_patch_monitor.py::TestXMLGeneration -v
