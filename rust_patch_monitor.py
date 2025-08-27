@@ -51,7 +51,9 @@ class PatchworkClient:
         # try to access its API endpoint directly
         try:
             # Try to access the series API with the project string identifier
-            test_response = self.session.get(f"{self.base_url}/series/?project=rust-for-linux&per_page=1")
+            test_response = self.session.get(
+                f"{self.base_url}/series/?project=rust-for-linux&per_page=1"
+            )
             if test_response.status_code == 200:
                 print("Found Rust for Linux project - using string identifier")
                 return "rust-for-linux"  # Return string instead of numeric ID
@@ -69,13 +71,19 @@ class PatchworkClient:
                 link_name = project.get("link_name", "").lower()
 
                 # More comprehensive search
-                if any(term in name for term in ["rust", "r4l"]) or any(term in link_name for term in ["rust", "r4l"]):
-                    print(f"Found potential Rust project: {project.get('name')} (link: {project.get('link_name')})")
+                if any(term in name for term in ["rust", "r4l"]) or any(
+                    term in link_name for term in ["rust", "r4l"]
+                ):
+                    print(
+                        f"Found potential Rust project: {project.get('name')} (link: {project.get('link_name')})"
+                    )
                     return project["id"]
 
             # If still not found, maybe it requires authentication or special access
             print("Rust for Linux project not accessible via public API.")
-            print("The project exists at https://patchwork.kernel.org/project/rust-for-linux/list/")
+            print(
+                "The project exists at https://patchwork.kernel.org/project/rust-for-linux/list/"
+            )
             print("but may require authentication or have API access restrictions.")
 
         except Exception as e:
@@ -114,7 +122,9 @@ class PatchworkClient:
 
         return False
 
-    def get_recent_series(self, project_id, days: int = 90, include_applied: bool = False) -> List[PatchSeries]:
+    def get_recent_series(
+        self, project_id, days: int = 90, include_applied: bool = False
+    ) -> List[PatchSeries]:
         """Get patch series from the Rust for Linux project in the last N days, optionally excluding applied series"""
         cutoff_date = datetime.now() - timedelta(days=days)
 
@@ -125,7 +135,9 @@ class PatchworkClient:
         applied_count = 0
 
         filter_text = "all patches" if include_applied else "PENDING patches"
-        print(f"Searching Rust for Linux project for {filter_text} in last {days} days...")
+        print(
+            f"Searching Rust for Linux project for {filter_text} in last {days} days..."
+        )
 
         while True:
             params["page"] = page
@@ -139,7 +151,9 @@ class PatchworkClient:
 
             for series_data in data:
                 try:
-                    series_date = datetime.fromisoformat(series_data["date"].replace("Z", "+00:00"))
+                    series_date = datetime.fromisoformat(
+                        series_data["date"].replace("Z", "+00:00")
+                    )
                     # Convert to timezone-naive for comparison
                     if series_date.tzinfo:
                         series_date = series_date.replace(tzinfo=None)
@@ -225,7 +239,11 @@ class ClaudeAnalyzer:
 
         # Calculate days since posting
         now = datetime.now(timezone.utc)
-        series_date = series.date.replace(tzinfo=timezone.utc) if series.date.tzinfo is None else series.date
+        series_date = (
+            series.date.replace(tzinfo=timezone.utc)
+            if series.date.tzinfo is None
+            else series.date
+        )
         days_since_posting = (now - series_date).days
 
         # Extract sign-offs and endorsements from all patches
@@ -316,10 +334,18 @@ class ClaudeAnalyzer:
                 comments = client.get_patch_comments(patch.id)
                 if comments:
                     comments_xml = []
-                    for j, comment in enumerate(comments[:3]):  # Limit to 3 comments per patch
-                        submitter_name = comment.get("submitter", {}).get("name", "Unknown")
-                        comment_date = comment.get("date", "Unknown")[:10]  # Just the date part
-                        comment_content = comment.get("content", "")[:1500]  # Limit comment length
+                    for j, comment in enumerate(
+                        comments[:3]
+                    ):  # Limit to 3 comments per patch
+                        submitter_name = comment.get("submitter", {}).get(
+                            "name", "Unknown"
+                        )
+                        comment_date = comment.get("date", "Unknown")[
+                            :10
+                        ]  # Just the date part
+                        comment_content = comment.get("content", "")[
+                            :1500
+                        ]  # Limit comment length
 
                         comment_xml = f"""        <comment author="{submitter_name}" date="{comment_date}">
 {comment_content}
@@ -357,7 +383,9 @@ class ClaudeAnalyzer:
                 # Track most recent comment date
                 for comment in comments:
                     try:
-                        comment_date = datetime.fromisoformat(comment.get("date", "").replace("Z", "+00:00"))
+                        comment_date = datetime.fromisoformat(
+                            comment.get("date", "").replace("Z", "+00:00")
+                        )
                         if comment_date > most_recent_activity:
                             most_recent_activity = comment_date
                     except Exception:
@@ -481,15 +509,12 @@ Provide an executive brief following the structure above, including only section
 
         # Capture token usage for cost tracking and transparency
         token_usage = {
-            'input_tokens': response.usage.input_tokens,
-            'output_tokens': response.usage.output_tokens,
-            'model': 'claude-sonnet-4-20250514'
+            "input_tokens": response.usage.input_tokens,
+            "output_tokens": response.usage.output_tokens,
+            "model": "claude-sonnet-4-20250514",
         }
 
-        return {
-            'analysis': response.content[0].text,
-            'token_usage': token_usage
-        }
+        return {"analysis": response.content[0].text, "token_usage": token_usage}
 
 
 @click.group()
@@ -531,13 +556,17 @@ def debug_recent(days):
     click.echo("Recent patch series (showing titles for debugging):\n")
     for i, series in enumerate(data[:20], 1):
         click.echo(f"{i:2d}. {series['name']}")
-        click.echo(f"    Date: {series['date'][:10]} | Project: {series.get('project', {}).get('name', 'Unknown')}")
+        click.echo(
+            f"    Date: {series['date'][:10]} | Project: {series.get('project', {}).get('name', 'Unknown')}"
+        )
         click.echo()
 
 
 @cli.command()
 @click.option("--days", default=90, help="Days to look back for patches")
-@click.option("--include-applied", is_flag=True, help="Include already applied patch series")
+@click.option(
+    "--include-applied", is_flag=True, help="Include already applied patch series"
+)
 @click.option("--claude-key", envvar="ANTHROPIC_API_KEY", help="Claude API key")
 def list_patches(days, include_applied, claude_key):
     """List recent Rust for Linux patch series"""
@@ -551,8 +580,14 @@ def list_patches(days, include_applied, claude_key):
 
         for i, series in enumerate(series_list, 1):
             click.echo(f"{i:2d}. {series.name}")
-            submitter_name = series.submitter.get("name", "Unknown") if series.submitter else "Unknown"
-            click.echo(f"    By: {submitter_name} on {series.date.strftime('%Y-%m-%d')}")
+            submitter_name = (
+                series.submitter.get("name", "Unknown")
+                if series.submitter
+                else "Unknown"
+            )
+            click.echo(
+                f"    By: {submitter_name} on {series.date.strftime('%Y-%m-%d')}"
+            )
             click.echo(f"    Patches: {series.total} | URL: {series.web_url}")
             click.echo()
 
@@ -562,8 +597,12 @@ def list_patches(days, include_applied, claude_key):
 
 @cli.command()
 @click.option("--days", default=90, help="Days to look back for patches")
-@click.option("--include-applied", is_flag=True, help="Include already applied patch series")
-@click.option("--no-comments", is_flag=True, help="Skip fetching community comments (faster)")
+@click.option(
+    "--include-applied", is_flag=True, help="Include already applied patch series"
+)
+@click.option(
+    "--no-comments", is_flag=True, help="Skip fetching community comments (faster)"
+)
 @click.option("--max-patches", default=5, help="Maximum number of patches to analyze")
 @click.option("--claude-key", envvar="ANTHROPIC_API_KEY", help="Claude API key")
 @click.option("--output", "-o", help="Output file for the report")
@@ -592,8 +631,14 @@ def analyze(days, include_applied, no_comments, max_patches, claude_key, output)
         click.echo("Select a patch series to analyze:\n")
         for i, series in enumerate(series_list, 1):
             click.echo(f"{i:2d}. {series.name}")
-            submitter_name = series.submitter.get("name", "Unknown") if series.submitter else "Unknown"
-            click.echo(f"    By: {submitter_name} on {series.date.strftime('%Y-%m-%d')}")
+            submitter_name = (
+                series.submitter.get("name", "Unknown")
+                if series.submitter
+                else "Unknown"
+            )
+            click.echo(
+                f"    By: {submitter_name} on {series.date.strftime('%Y-%m-%d')}"
+            )
             click.echo()
 
         selection = click.prompt("Enter series number", type=int)
@@ -615,7 +660,9 @@ def analyze(days, include_applied, no_comments, max_patches, claude_key, output)
         # Analyze with Claude
         include_comments = not no_comments
         if include_comments:
-            click.echo("Analyzing patchset with Claude (including community feedback)...")
+            click.echo(
+                "Analyzing patchset with Claude (including community feedback)..."
+            )
         else:
             click.echo("Analyzing patchset with Claude (patch content only)...")
 
@@ -626,12 +673,14 @@ def analyze(days, include_applied, no_comments, max_patches, claude_key, output)
             include_comments=include_comments,
             max_patches=max_patches,
         )
-        
-        analysis_text = result['analysis']
-        token_usage = result['token_usage']
-        
+
+        analysis_text = result["analysis"]
+        token_usage = result["token_usage"]
+
         # Display token usage for transparency
-        click.echo(f"📊 Token usage - Input: {token_usage['input_tokens']}, Output: {token_usage['output_tokens']}")
+        click.echo(
+            f"📊 Token usage - Input: {token_usage['input_tokens']}, Output: {token_usage['output_tokens']}"
+        )
 
         if output:
             with open(output, "w") as f:
@@ -653,7 +702,9 @@ def analyze(days, include_applied, no_comments, max_patches, claude_key, output)
 @click.option("--no-comments", is_flag=True, help="Skip community comments (faster)")
 @click.option("--summary-report", is_flag=True, help="Generate combined summary report")
 @click.option("--max-patches", default=5, help="Maximum patches per series")
-def analyze_bulk(days, max_series, output_dir, claude_key, no_comments, summary_report, max_patches):
+def analyze_bulk(
+    days, max_series, output_dir, claude_key, no_comments, summary_report, max_patches
+):
     """Analyze multiple recent patch series in batch"""
     if not claude_key:
         click.echo("Error: Claude API key is required for analysis.", err=True)
@@ -681,7 +732,9 @@ def analyze_bulk(days, max_series, output_dir, claude_key, no_comments, summary_
         series_list.sort(key=lambda x: x.date, reverse=True)
         series_to_analyze = series_list[:max_series]
 
-        click.echo(f"Found {len(series_list)} recent series, analyzing top {len(series_to_analyze)}")
+        click.echo(
+            f"Found {len(series_list)} recent series, analyzing top {len(series_to_analyze)}"
+        )
 
         # Create output directory
         output_path = Path(output_dir)
@@ -705,7 +758,9 @@ def analyze_bulk(days, max_series, output_dir, claude_key, no_comments, summary_
                         patch = client.get_patch_content(patch_info["id"])
                         patches.append(patch)
                     except Exception as e:
-                        click.echo(f"    Warning: Failed to fetch patch {patch_info['id']}: {e}")
+                        click.echo(
+                            f"    Warning: Failed to fetch patch {patch_info['id']}: {e}"
+                        )
                         continue
 
                 if not patches:
@@ -724,30 +779,42 @@ def analyze_bulk(days, max_series, output_dir, claude_key, no_comments, summary_
                     include_comments=include_comments,
                     max_patches=max_patches,
                 )
-                
-                analysis_text = result['analysis']
-                token_usage = result['token_usage']
-                
-                click.echo(f"  📊 Tokens: {token_usage['input_tokens']} in / {token_usage['output_tokens']} out")
+
+                analysis_text = result["analysis"]
+                token_usage = result["token_usage"]
+
+                click.echo(
+                    f"  📊 Tokens: {token_usage['input_tokens']} in / {token_usage['output_tokens']} out"
+                )
 
                 # Save individual analysis
                 filename = f"series-{series.id}.md"
                 filepath = timestamp_dir / filename
                 with open(filepath, "w") as f:
                     f.write(f"# Analysis: {series.name}\n\n")
-                    f.write(f"**Generated**: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+                    f.write(
+                        f"**Generated**: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n"
+                    )
                     f.write(f"**Series ID**: {series.id}\n")
                     f.write(f"**Author**: {series.submitter.get('name', 'Unknown')}\n")
                     f.write(f"**Date**: {series.date.strftime('%Y-%m-%d')}\n")
                     f.write(f"**Patches**: {series.total}\n")
                     f.write(f"**Patchwork URL**: {series.web_url}\n\n")
-                    f.write(f"**Token Usage**: {token_usage['input_tokens']} input / {token_usage['output_tokens']} output\n\n")
+                    f.write(
+                        f"**Token Usage**: {token_usage['input_tokens']} input / {token_usage['output_tokens']} output\n\n"
+                    )
                     f.write("---\n\n")
                     f.write(analysis_text)
 
                 # Store for summary and web export
                 analysis_results.append(
-                    {"series": series, "analysis": analysis_text, "patches": patches, "filepath": str(filepath), "token_usage": token_usage}
+                    {
+                        "series": series,
+                        "analysis": analysis_text,
+                        "patches": patches,
+                        "filepath": str(filepath),
+                        "token_usage": token_usage,
+                    }
                 )
 
                 click.echo(f"  ✓ Saved to {filepath}")
@@ -764,9 +831,13 @@ def analyze_bulk(days, max_series, output_dir, claude_key, no_comments, summary_
 
             with open(summary_path, "w") as f:
                 f.write("# Rust for Linux Patch Analysis Summary\n\n")
-                f.write(f"**Generated**: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+                f.write(
+                    f"**Generated**: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n"
+                )
                 f.write(f"**Period**: Last {days} days\n")
-                f.write(f"**Analyzed**: {len(analysis_results)}/{len(series_to_analyze)} series\n\n")
+                f.write(
+                    f"**Analyzed**: {len(analysis_results)}/{len(series_to_analyze)} series\n\n"
+                )
 
                 if failed_analyses:
                     f.write("## Failed Analyses ({})\n\n".format(len(failed_analyses)))
@@ -778,10 +849,14 @@ def analyze_bulk(days, max_series, output_dir, claude_key, no_comments, summary_
                 for result in analysis_results:
                     series = result["series"]
                     f.write(f"### {series.name}\n\n")
-                    f.write(f"- **Author**: {series.submitter.get('name', 'Unknown')}\n")
+                    f.write(
+                        f"- **Author**: {series.submitter.get('name', 'Unknown')}\n"
+                    )
                     f.write(f"- **Date**: {series.date.strftime('%Y-%m-%d')}\n")
                     f.write(f"- **Patches**: {series.total}\n")
-                    f.write(f"- **Report**: [{result['filepath']}]({os.path.basename(result['filepath'])})\n")
+                    f.write(
+                        f"- **Report**: [{result['filepath']}]({os.path.basename(result['filepath'])})\n"
+                    )
                     f.write(f"- **Patchwork**: {series.web_url}\n\n")
 
             click.echo(f"✓ Summary saved to {summary_path}")
@@ -791,9 +866,15 @@ def analyze_bulk(days, max_series, output_dir, claude_key, no_comments, summary_
         web_data_path = Path("web-ui/src/data/patches.json")
 
         # Calculate total token usage across all analyses
-        total_input_tokens = sum(result.get("token_usage", {}).get("input_tokens", 0) for result in analysis_results)
-        total_output_tokens = sum(result.get("token_usage", {}).get("output_tokens", 0) for result in analysis_results)
-        
+        total_input_tokens = sum(
+            result.get("token_usage", {}).get("input_tokens", 0)
+            for result in analysis_results
+        )
+        total_output_tokens = sum(
+            result.get("token_usage", {}).get("output_tokens", 0)
+            for result in analysis_results
+        )
+
         # Create enhanced export data with analysis summaries and token usage
         export_data = {
             "metadata": {
@@ -807,8 +888,8 @@ def analyze_bulk(days, max_series, output_dir, claude_key, no_comments, summary_
                     "total_input_tokens": total_input_tokens,
                     "total_output_tokens": total_output_tokens,
                     "model": "claude-sonnet-4-20250514",
-                    "analysis_count": len(analysis_results)
-                }
+                    "analysis_count": len(analysis_results),
+                },
             },
             "patch_series": [],
         }
@@ -835,8 +916,14 @@ def analyze_bulk(days, max_series, output_dir, claude_key, no_comments, summary_
                 "name": series.name,
                 "date": series.date.isoformat(),
                 "submitter": {
-                    "name": series.submitter.get("name", "Unknown") if series.submitter else "Unknown",
-                    "email": series.submitter.get("email", "") if series.submitter else "",
+                    "name": (
+                        series.submitter.get("name", "Unknown")
+                        if series.submitter
+                        else "Unknown"
+                    ),
+                    "email": (
+                        series.submitter.get("email", "") if series.submitter else ""
+                    ),
                 },
                 "total_patches": series.total,
                 "web_url": series.web_url,
@@ -844,7 +931,9 @@ def analyze_bulk(days, max_series, output_dir, claude_key, no_comments, summary_
                     "version": engagement["version"],
                     "days_since_posting": engagement["days_since_posting"],
                     "endorsements": {
-                        "signed_off_by": len(engagement["endorsements"]["signed_off_by"]),
+                        "signed_off_by": len(
+                            engagement["endorsements"]["signed_off_by"]
+                        ),
                         "acked_by": len(engagement["endorsements"]["acked_by"]),
                         "reviewed_by": len(engagement["endorsements"]["reviewed_by"]),
                         "tested_by": len(engagement["endorsements"]["tested_by"]),
@@ -856,7 +945,11 @@ def analyze_bulk(days, max_series, output_dir, claude_key, no_comments, summary_
                     "summary": analysis_text,
                     "technical_context": "See detailed analysis report",
                     "patches": [
-                        {"id": i + 1, "name": f"Patch {i+1}", "description": "See full report"}
+                        {
+                            "id": i + 1,
+                            "name": f"Patch {i+1}",
+                            "description": "See full report",
+                        }
                         for i in range(min(3, len(patches)))
                     ],
                     "issues": [],
@@ -874,9 +967,13 @@ def analyze_bulk(days, max_series, output_dir, claude_key, no_comments, summary_
 
         # Final summary
         click.echo("\n🎉 Bulk analysis complete!")
-        click.echo(f"✓ Analyzed: {len(analysis_results)}/{len(series_to_analyze)} series")
+        click.echo(
+            f"✓ Analyzed: {len(analysis_results)}/{len(series_to_analyze)} series"
+        )
         click.echo(f"✗ Failed: {len(failed_analyses)} series")
-        click.echo(f"📊 Token usage: {total_input_tokens} input / {total_output_tokens} output")
+        click.echo(
+            f"📊 Token usage: {total_input_tokens} input / {total_output_tokens} output"
+        )
         click.echo(f"📁 Reports: {timestamp_dir}")
         click.echo(f"🌐 Web UI: {web_data_path}")
 
@@ -886,7 +983,9 @@ def analyze_bulk(days, max_series, output_dir, claude_key, no_comments, summary_
 
 @cli.command()
 @click.option("--days", default=90, help="Days to look back for patches")
-@click.option("--include-applied", is_flag=True, help="Include already applied patch series")
+@click.option(
+    "--include-applied", is_flag=True, help="Include already applied patch series"
+)
 @click.option("--output", "-o", required=True, help="Output JSON file")
 def export_json(days, include_applied, output):
     """Export patch data as JSON for web UI consumption"""
@@ -932,7 +1031,12 @@ def export_json(days, include_applied, output):
                 engagement = {
                     "version": 1,
                     "days_since_posting": 0,
-                    "endorsements": {"signed_off_by": [], "acked_by": [], "reviewed_by": [], "tested_by": []},
+                    "endorsements": {
+                        "signed_off_by": [],
+                        "acked_by": [],
+                        "reviewed_by": [],
+                        "tested_by": [],
+                    },
                 }
 
             series_data = {
@@ -940,8 +1044,14 @@ def export_json(days, include_applied, output):
                 "name": series.name,
                 "date": series.date.isoformat(),
                 "submitter": {
-                    "name": series.submitter.get("name", "Unknown") if series.submitter else "Unknown",
-                    "email": series.submitter.get("email", "") if series.submitter else "",
+                    "name": (
+                        series.submitter.get("name", "Unknown")
+                        if series.submitter
+                        else "Unknown"
+                    ),
+                    "email": (
+                        series.submitter.get("email", "") if series.submitter else ""
+                    ),
                 },
                 "total_patches": series.total,
                 "web_url": series.web_url,
@@ -949,7 +1059,9 @@ def export_json(days, include_applied, output):
                     "version": engagement["version"],
                     "days_since_posting": engagement["days_since_posting"],
                     "endorsements": {
-                        "signed_off_by": len(engagement["endorsements"]["signed_off_by"]),
+                        "signed_off_by": len(
+                            engagement["endorsements"]["signed_off_by"]
+                        ),
                         "acked_by": len(engagement["endorsements"]["acked_by"]),
                         "reviewed_by": len(engagement["endorsements"]["reviewed_by"]),
                         "tested_by": len(engagement["endorsements"]["tested_by"]),

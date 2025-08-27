@@ -28,11 +28,15 @@ class TestGoldenMasters:
         series.submitter = {"name": "Test Author", "email": "test@example.com"}
         series.date = datetime(2025, 8, 27, 12, 0, 0, tzinfo=timezone.utc)
         series.total = 2
-        series.web_url = "https://patchwork.kernel.org/project/rust-for-linux/list/?series=123"
+        series.web_url = (
+            "https://patchwork.kernel.org/project/rust-for-linux/list/?series=123"
+        )
 
         mock_patch = Mock()
         mock_patch.name = "rust: kernel: add device abstraction"
-        mock_patch.content = "Sample patch content\nSigned-off-by: Test Author <test@example.com>"
+        mock_patch.content = (
+            "Sample patch content\nSigned-off-by: Test Author <test@example.com>"
+        )
         mock_patch.id = 456
 
         expected_xml_structure = """<patchset>
@@ -76,7 +80,9 @@ Signed-off-by: Test Author <test@example.com>
 </patchset>"""
 
         # Generate actual XML
-        with patch("rust_patch_monitor.ClaudeAnalyzer._analyze_engagement") as mock_engagement:
+        with patch(
+            "rust_patch_monitor.ClaudeAnalyzer._analyze_engagement"
+        ) as mock_engagement:
             mock_engagement.return_value = {
                 "version": 3,
                 "days_since_posting": 0,
@@ -106,8 +112,16 @@ Signed-off-by: Test Author <test@example.com>
                 actual_xml = actual_prompt[xml_start:xml_end]
 
                 # Compare structures (normalize whitespace)
-                expected_lines = [line.strip() for line in expected_xml_structure.strip().split("\n") if line.strip()]
-                actual_lines = [line.strip() for line in actual_xml.strip().split("\n") if line.strip()]
+                expected_lines = [
+                    line.strip()
+                    for line in expected_xml_structure.strip().split("\n")
+                    if line.strip()
+                ]
+                actual_lines = [
+                    line.strip()
+                    for line in actual_xml.strip().split("\n")
+                    if line.strip()
+                ]
 
                 if expected_lines != actual_lines:
                     diff = "\n".join(
@@ -138,7 +152,9 @@ Signed-off-by: Test Author <test@example.com>
         mock_patch.content = "Test content"
         mock_patch.id = 1
 
-        with patch("rust_patch_monitor.ClaudeAnalyzer._analyze_engagement") as mock_engagement:
+        with patch(
+            "rust_patch_monitor.ClaudeAnalyzer._analyze_engagement"
+        ) as mock_engagement:
             mock_engagement.return_value = {
                 "version": 1,
                 "days_since_posting": 0,

@@ -134,7 +134,9 @@ class TestTokenUsageCapture:
         mock_patch.content = "Test patch content"
         mock_patch.id = 123
 
-        with patch("rust_patch_monitor.ClaudeAnalyzer._analyze_engagement") as mock_engagement:
+        with patch(
+            "rust_patch_monitor.ClaudeAnalyzer._analyze_engagement"
+        ) as mock_engagement:
             mock_engagement.return_value = {
                 "version": 1,
                 "days_since_posting": 5,
@@ -154,16 +156,18 @@ class TestTokenUsageCapture:
                 mock_client.messages.create.return_value = mock_response
 
                 # Call analyze_patchset
-                result = analyzer.analyze_patchset(series, [mock_patch], include_comments=False)
+                result = analyzer.analyze_patchset(
+                    series, [mock_patch], include_comments=False
+                )
 
                 # Verify result structure
                 assert isinstance(result, dict)
                 assert "analysis" in result
                 assert "token_usage" in result
-                
+
                 # Verify analysis content
                 assert result["analysis"] == "Test analysis content"
-                
+
                 # Verify token usage structure
                 token_usage = result["token_usage"]
                 assert token_usage["input_tokens"] == 1000
@@ -174,13 +178,14 @@ class TestTokenUsageCapture:
         """Test that bulk analysis properly aggregates token usage across multiple series"""
         from click.testing import CliRunner
         from rust_patch_monitor import cli
-        
+
         runner = CliRunner()
-        
+
         # Mock the entire pipeline with realistic token usage
-        with patch("rust_patch_monitor.PatchworkClient") as MockClient, \
-             patch("rust_patch_monitor.ClaudeAnalyzer") as MockAnalyzer:
-            
+        with patch("rust_patch_monitor.PatchworkClient") as MockClient, patch(
+            "rust_patch_monitor.ClaudeAnalyzer"
+        ) as MockAnalyzer:
+
             # Setup mock client
             mock_client_instance = MockClient.return_value
             mock_series = Mock()
@@ -191,11 +196,15 @@ class TestTokenUsageCapture:
             mock_series.total = 1
             mock_series.web_url = "https://example.com"
             mock_series.patches = [{"id": 1, "name": "Test patch"}]
-            
-            mock_client_instance.get_rust_for_linux_project_id.return_value = "rust-for-linux"
+
+            mock_client_instance.get_rust_for_linux_project_id.return_value = (
+                "rust-for-linux"
+            )
             mock_client_instance.get_recent_series.return_value = [mock_series]
-            mock_client_instance.get_patch_content.return_value = Mock(content="test", id=1)
-            
+            mock_client_instance.get_patch_content.return_value = Mock(
+                content="test", id=1
+            )
+
             # Setup mock analyzer with token usage
             mock_analyzer_instance = MockAnalyzer.return_value
             mock_analyzer_instance.analyze_patchset.return_value = {
@@ -203,29 +212,41 @@ class TestTokenUsageCapture:
                 "token_usage": {
                     "input_tokens": 1000,
                     "output_tokens": 100,
-                    "model": "claude-sonnet-4-20250514"
-                }
+                    "model": "claude-sonnet-4-20250514",
+                },
             }
             mock_analyzer_instance._analyze_engagement.return_value = {
                 "version": 1,
                 "days_since_posting": 0,
-                "endorsements": {"signed_off_by": [], "acked_by": [], "reviewed_by": [], "tested_by": []}
+                "endorsements": {
+                    "signed_off_by": [],
+                    "acked_by": [],
+                    "reviewed_by": [],
+                    "tested_by": [],
+                },
             }
-            
+
             # Run bulk analysis command
             with runner.isolated_filesystem():
                 # Create web-ui directory structure
                 import os
+
                 os.makedirs("web-ui/src/data", exist_ok=True)
-                
-                result = runner.invoke(cli, [
-                    "analyze-bulk", 
-                    "--days", "7", 
-                    "--max-patches", "1",
-                    "--claude-key", "test-key",
-                    "--no-comments"
-                ])
-                
+
+                result = runner.invoke(
+                    cli,
+                    [
+                        "analyze-bulk",
+                        "--days",
+                        "7",
+                        "--max-patches",
+                        "1",
+                        "--claude-key",
+                        "test-key",
+                        "--no-comments",
+                    ],
+                )
+
                 # Should succeed and show token usage
                 assert result.exit_code == 0
                 assert "📊 Tokens:" in result.output
@@ -235,27 +256,27 @@ class TestTokenUsageCapture:
         """Test that JSON export includes aggregated token usage in metadata"""
         import tempfile
         import json
-        
+
         # Create a temporary analysis result with token usage
         analysis_results = [
             {
                 "series": Mock(id=1, name="Test Series 1"),
                 "analysis": "Analysis 1",
                 "patches": [Mock()],
-                "token_usage": {"input_tokens": 800, "output_tokens": 75}
+                "token_usage": {"input_tokens": 800, "output_tokens": 75},
             },
             {
                 "series": Mock(id=2, name="Test Series 2"),
-                "analysis": "Analysis 2", 
+                "analysis": "Analysis 2",
                 "patches": [Mock()],
-                "token_usage": {"input_tokens": 1200, "output_tokens": 125}
-            }
+                "token_usage": {"input_tokens": 1200, "output_tokens": 125},
+            },
         ]
-        
+
         # Mock the analyzer and create export data structure
         total_input = sum(r["token_usage"]["input_tokens"] for r in analysis_results)
         total_output = sum(r["token_usage"]["output_tokens"] for r in analysis_results)
-        
+
         export_data = {
             "metadata": {
                 "generated_at": datetime.now().isoformat(),
@@ -265,11 +286,11 @@ class TestTokenUsageCapture:
                     "total_input_tokens": total_input,
                     "total_output_tokens": total_output,
                     "model": "claude-sonnet-4-20250514",
-                    "analysis_count": len(analysis_results)
-                }
+                    "analysis_count": len(analysis_results),
+                },
             }
         }
-        
+
         # Verify token aggregation
         assert export_data["metadata"]["token_usage"]["total_input_tokens"] == 2000
         assert export_data["metadata"]["token_usage"]["total_output_tokens"] == 200
@@ -297,7 +318,9 @@ class TestXMLGeneration:
         mock_patch.id = 123
 
         # Generate XML (without calling Claude API)
-        with patch("rust_patch_monitor.ClaudeAnalyzer._analyze_engagement") as mock_engagement:
+        with patch(
+            "rust_patch_monitor.ClaudeAnalyzer._analyze_engagement"
+        ) as mock_engagement:
             mock_engagement.return_value = {
                 "version": 1,
                 "days_since_posting": 5,
@@ -316,8 +339,10 @@ class TestXMLGeneration:
                 mock_response.usage = Mock(input_tokens=1000, output_tokens=100)
                 mock_client.messages.create.return_value = mock_response
 
-                result = analyzer.analyze_patchset(series, [mock_patch], include_comments=False)
-                
+                result = analyzer.analyze_patchset(
+                    series, [mock_patch], include_comments=False
+                )
+
                 # Verify we get the new return format
                 assert isinstance(result, dict)
                 assert "analysis" in result
@@ -401,7 +426,9 @@ class TestPatchworkClient:
         client = PatchworkClient()
 
         # Test with include_applied=False (default)
-        series_list = client.get_recent_series("rust-for-linux", days=90, include_applied=False)
+        series_list = client.get_recent_series(
+            "rust-for-linux", days=90, include_applied=False
+        )
 
         # Should filter out GIT,PULL request but keep regular patch
         assert len(series_list) == 1
