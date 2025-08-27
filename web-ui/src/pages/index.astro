@@ -1,5 +1,20 @@
 ---
 import '../styles/global.css';
+import { readFileSync } from 'fs';
+import { fileURLToPath } from 'url';
+import path from 'path';
+
+// Load prompt template
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const promptTemplatePath = path.resolve(__dirname, '../../../prompt_template.txt');
+let promptTemplate;
+try {
+  promptTemplate = readFileSync(promptTemplatePath, 'utf-8');
+} catch (e) {
+  promptTemplate = 'Could not load prompt template file.';
+}
+
 // Try to import real data first, fall back to sample data if empty or missing
 let patchData;
 try {
@@ -348,6 +363,32 @@ const recentSeries = patch_series?.filter(series => (series.engagement?.days_sin
 					</div>
 				</div>
 
+				<!-- AI Prompt Template - Full Width Row -->
+				<div class="mt-6">
+					<div class="card bg-base-300">
+						<div class="card-body p-6">
+							<h4 class="font-semibold text-base-content mb-4 flex items-center gap-2">
+								🤖 AI Prompt Template
+								<button class="btn btn-sm btn-ghost ml-auto" id="toggle-prompt">Show Prompt</button>
+							</h4>
+							<div class="text-sm space-y-3" id="prompt-description">
+								<p class="text-base-content/80">The structured prompt template used by Claude AI to analyze each Rust for Linux patch series. This template guides the AI to provide executive-level technical briefings with consistent formatting and focus areas.</p>
+								<div class="flex flex-wrap gap-4">
+									<span class="badge badge-outline">📋 Executive briefing format</span>
+									<span class="badge badge-outline">🎯 Technical context guidelines</span>
+									<span class="badge badge-outline">📊 Engagement analysis</span>
+									<span class="badge badge-outline">⚠️ Issue identification</span>
+								</div>
+							</div>
+							<div id="prompt-content" class="hidden mt-4">
+								<div class="bg-base-100 rounded-lg p-4 border border-base-300">
+									<pre class="text-sm leading-relaxed overflow-x-auto whitespace-pre-wrap"><code id="prompt-template-content">Loading prompt template...</code></pre>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+
 				<!-- Simple footer info -->
 				<div class="text-center text-xs opacity-70 mt-6 pt-4 border-t border-base-300">
 					<p>Generated from rust-for-linux project • Data refreshed manually</p>
@@ -355,7 +396,7 @@ const recentSeries = patch_series?.filter(series => (series.engagement?.days_sin
 			</div>
 		</footer>
 
-		<script define:vars={{ patch_series }}>
+		<script define:vars={{ patch_series, promptTemplate }}>
 			// Client-side interactivity for patch series selection
 			document.addEventListener('DOMContentLoaded', function() {
 				const cards = document.querySelectorAll('.patch-series-card');
@@ -595,6 +636,31 @@ const recentSeries = patch_series?.filter(series => (series.engagement?.days_sin
 						}
 					}
 				});
+
+				// Prompt toggle functionality
+				const togglePromptBtn = document.getElementById('toggle-prompt');
+				const promptContent = document.getElementById('prompt-content');
+				const promptDescription = document.getElementById('prompt-description');
+				const promptTemplateContent = document.getElementById('prompt-template-content');
+				
+				if (togglePromptBtn && promptContent && promptDescription && promptTemplateContent) {
+					// Load the prompt template content
+					promptTemplateContent.textContent = promptTemplate || 'Could not load prompt template.';
+					
+					togglePromptBtn.addEventListener('click', () => {
+						const isHidden = promptContent.classList.contains('hidden');
+						
+						if (isHidden) {
+							promptContent.classList.remove('hidden');
+							promptDescription.classList.add('hidden');
+							togglePromptBtn.textContent = 'Hide Prompt';
+						} else {
+							promptContent.classList.add('hidden');
+							promptDescription.classList.remove('hidden');
+							togglePromptBtn.textContent = 'Show Prompt';
+						}
+					});
+				}
 			});
 		</script>
 	</body>
