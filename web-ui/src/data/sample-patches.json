@@ -4,7 +4,14 @@
     "project": "rust-for-linux",
     "days_back": 90,
     "include_applied": false,
-    "total_series": 5
+    "total_series": 5,
+    "analysis_method": "claude_bulk",
+    "token_usage": {
+      "total_input_tokens": 8500,
+      "total_output_tokens": 950,
+      "model": "claude-sonnet-4-20250514",
+      "analysis_count": 5
+    }
   },
   "patch_series": [
     {
