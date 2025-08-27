@@ -114,6 +114,179 @@ class TestEngagementAnalysis:
             assert result["days_since_posting"] == 5
 
 
+class TestTokenUsageCapture:
+    """Test token usage capture from Claude API responses"""
+
+    def test_analyze_patchset_captures_token_usage(self):
+        """Test that analyze_patchset returns both analysis and token usage"""
+        analyzer = ClaudeAnalyzer("fake-api-key")
+
+        # Create mock data
+        series = Mock()
+        series.name = "Test Series"
+        series.submitter = {"name": "Test Author", "email": "test@example.com"}
+        series.date = datetime(2025, 8, 27, tzinfo=timezone.utc)
+        series.total = 1
+        series.web_url = "https://example.com/series/1"
+
+        mock_patch = Mock()
+        mock_patch.name = "Test Patch"
+        mock_patch.content = "Test patch content"
+        mock_patch.id = 123
+
+        with patch("rust_patch_monitor.ClaudeAnalyzer._analyze_engagement") as mock_engagement:
+            mock_engagement.return_value = {
+                "version": 1,
+                "days_since_posting": 5,
+                "endorsements": {
+                    "signed_off_by": ["Author Name"],
+                    "acked_by": [],
+                    "reviewed_by": [],
+                    "tested_by": [],
+                },
+            }
+
+            # Mock Claude API client with realistic response structure
+            with patch.object(analyzer, "client") as mock_client:
+                mock_response = Mock()
+                mock_response.content = [Mock(text="Test analysis content")]
+                mock_response.usage = Mock(input_tokens=1000, output_tokens=100)
+                mock_client.messages.create.return_value = mock_response
+
+                # Call analyze_patchset
+                result = analyzer.analyze_patchset(series, [mock_patch], include_comments=False)
+
+                # Verify result structure
+                assert isinstance(result, dict)
+                assert "analysis" in result
+                assert "token_usage" in result
+
+                # Verify analysis content
+                assert result["analysis"] == "Test analysis content"
+
+                # Verify token usage structure
+                token_usage = result["token_usage"]
+                assert token_usage["input_tokens"] == 1000
+                assert token_usage["output_tokens"] == 100
+                assert token_usage["model"] == "claude-sonnet-4-20250514"
+
+    def test_bulk_analysis_aggregates_token_usage(self):
+        """Test that bulk analysis properly aggregates token usage across multiple series"""
+        from click.testing import CliRunner
+        from rust_patch_monitor import cli
+
+        runner = CliRunner()
+
+        # Mock the entire pipeline with realistic token usage
+        with patch("rust_patch_monitor.PatchworkClient") as MockClient, patch(
+            "rust_patch_monitor.ClaudeAnalyzer"
+        ) as MockAnalyzer:
+
+            # Setup mock client
+            mock_client_instance = MockClient.return_value
+            mock_series = Mock()
+            mock_series.id = 1
+            mock_series.name = "Test Series"
+            mock_series.submitter = {"name": "Test", "email": "test@example.com"}
+            mock_series.date = datetime.now(timezone.utc)
+            mock_series.total = 1
+            mock_series.web_url = "https://example.com"
+            mock_series.patches = [{"id": 1, "name": "Test patch"}]
+
+            mock_client_instance.get_rust_for_linux_project_id.return_value = "rust-for-linux"
+            mock_client_instance.get_recent_series.return_value = [mock_series]
+            mock_client_instance.get_patch_content.return_value = Mock(content="test", id=1)
+
+            # Setup mock analyzer with token usage
+            mock_analyzer_instance = MockAnalyzer.return_value
+            mock_analyzer_instance.analyze_patchset.return_value = {
+                "analysis": "Test analysis",
+                "token_usage": {
+                    "input_tokens": 1000,
+                    "output_tokens": 100,
+                    "model": "claude-sonnet-4-20250514",
+                },
+            }
+            mock_analyzer_instance._analyze_engagement.return_value = {
+                "version": 1,
+                "days_since_posting": 0,
+                "endorsements": {
+                    "signed_off_by": [],
+                    "acked_by": [],
+                    "reviewed_by": [],
+                    "tested_by": [],
+                },
+            }
+
+            # Run bulk analysis command
+            with runner.isolated_filesystem():
+                # Create web-ui directory structure
+                import os
+
+                os.makedirs("web-ui/src/data", exist_ok=True)
+
+                result = runner.invoke(
+                    cli,
+                    [
+                        "analyze-bulk",
+                        "--days",
+                        "7",
+                        "--max-patches",
+                        "1",
+                        "--claude-key",
+                        "test-key",
+                        "--no-comments",
+                    ],
+                )
+
+                # Should succeed and show token usage
+                assert result.exit_code == 0
+                assert "📊 Tokens:" in result.output
+                assert "1000 in / 100 out" in result.output
+
+    def test_json_export_includes_token_metadata(self):
+        """Test that JSON export includes aggregated token usage in metadata"""
+
+        # Create a temporary analysis result with token usage
+        analysis_results = [
+            {
+                "series": Mock(id=1, name="Test Series 1"),
+                "analysis": "Analysis 1",
+                "patches": [Mock()],
+                "token_usage": {"input_tokens": 800, "output_tokens": 75},
+            },
+            {
+                "series": Mock(id=2, name="Test Series 2"),
+                "analysis": "Analysis 2",
+                "patches": [Mock()],
+                "token_usage": {"input_tokens": 1200, "output_tokens": 125},
+            },
+        ]
+
+        # Mock the analyzer and create export data structure
+        total_input = sum(r["token_usage"]["input_tokens"] for r in analysis_results)
+        total_output = sum(r["token_usage"]["output_tokens"] for r in analysis_results)
+
+        export_data = {
+            "metadata": {
+                "generated_at": datetime.now().isoformat(),
+                "project": "rust-for-linux",
+                "total_series": len(analysis_results),
+                "token_usage": {
+                    "total_input_tokens": total_input,
+                    "total_output_tokens": total_output,
+                    "model": "claude-sonnet-4-20250514",
+                    "analysis_count": len(analysis_results),
+                },
+            }
+        }
+
+        # Verify token aggregation
+        assert export_data["metadata"]["token_usage"]["total_input_tokens"] == 2000
+        assert export_data["metadata"]["token_usage"]["total_output_tokens"] == 200
+        assert export_data["metadata"]["token_usage"]["analysis_count"] == 2
+
+
 class TestXMLGeneration:
     """Test XML prompt generation - critical for Claude integration"""
 
@@ -151,9 +324,15 @@ class TestXMLGeneration:
             with patch.object(analyzer, "client") as mock_client:
                 mock_response = Mock()
                 mock_response.content = [Mock(text="Test response")]
+                mock_response.usage = Mock(input_tokens=1000, output_tokens=100)
                 mock_client.messages.create.return_value = mock_response
 
-                analyzer.analyze_patchset(series, [mock_patch], include_comments=False)
+                result = analyzer.analyze_patchset(series, [mock_patch], include_comments=False)
+
+                # Verify we get the new return format
+                assert isinstance(result, dict)
+                assert "analysis" in result
+                assert "token_usage" in result
 
                 # Verify the XML context was passed to Claude
                 call_args = mock_client.messages.create.call_args

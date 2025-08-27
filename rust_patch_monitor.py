@@ -12,6 +12,8 @@ from dataclasses import dataclass
 from typing import List, Dict, Optional
 import re
 import anthropic
+import json
+import os
 
 
 @dataclass
@@ -214,6 +216,21 @@ class ClaudeAnalyzer:
     def __init__(self, api_key: str):
         self.client = anthropic.Client(api_key=api_key)
 
+    def _load_prompt_template(self) -> str:
+        """Load the prompt template from the external file"""
+        # Get the directory of the current script
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        template_path = os.path.join(script_dir, "prompt_template.txt")
+
+        try:
+            with open(template_path, "r", encoding="utf-8") as f:
+                return f.read()
+        except FileNotFoundError:
+            # Fallback to inline prompt if template file is missing
+            raise FileNotFoundError(f"Prompt template file not found at {template_path}")
+        except Exception as e:
+            raise Exception(f"Error reading prompt template: {e}")
+
     def _analyze_engagement(self, series: PatchSeries, patches: List[Patch]) -> Dict:
         """Analyze community engagement indicators from patches"""
         from datetime import datetime, timezone
@@ -415,62 +432,9 @@ class ClaudeAnalyzer:
   </patches>
 </patchset>"""
 
-        prompt = f"""
-        Analyze this Rust for Linux kernel patchset and provide a comprehensive markdown report.
-
-        {analysis_context}
-
-<analysis_request>
-  <output_format>markdown</output_format>
-  <target_audience>Director of Engineering familiar with Linux kernel development and Rust-for-Linux strategy,
-  but potentially unfamiliar with specific subsystems</target_audience>
-
-  <role>You are a technical adviser providing succinct executive briefings. The director needs to understand
-  what matters, why it matters, and be able to explain it to stakeholders. Assume deep kernel knowledge but
-  explain subsystem-specific details.</role>
-
-  <engagement_guidance>
-    <status_indicators>
-      - High version (v5+) + recent + many acks = "Ready for merge"
-      - Recent high version + endorsements + minimal discussion = "Mature/stable"
-      - Old posting (30+ days) + no acks + no activity = "Stalled"
-      - Recent v1 + active discussion = "Early development"
-      - Quality concerns in comments = "Needs attention"
-    </status_indicators>
-  </engagement_guidance>
-
-  <format_requirements>
-    <structure>
-      # Executive Brief: {series.name}
-
-      **Status**: [Ready for merge | Under review | Stalled | Quality concerns | Strategic development]
-      **Significance**: [Major advance | Incremental improvement | Bug fix | Infrastructure | Experiment]
-
-      ## What & Why
-      [2-3 sentences: what this does and why it matters to Rust-for-Linux]
-
-      ## Technical Context (expand if subsystem explanation needed)
-      [Subsystem-specific details, architecture differences, interaction with existing C code]
-
-      ## Issues & Conflicts (only if present)
-      [Problems requiring director attention: quality concerns, community conflicts, blocking issues]
-
-      ## Stakeholder Summary (if strategically significant)
-      [Key talking points for external discussions]
-    </structure>
-
-    <guidelines>
-      - Skip sections that don't contain meaningful information
-      - Focus on what requires director attention or stakeholder communication
-      - Be succinct except in Technical Context where detail helps
-      - Highlight strategic advances in Rust-for-Linux adoption
-      - Flag quality issues, conflicts, or unusual patterns
-    </guidelines>
-  </format_requirements>
-</analysis_request>
-
-Provide an executive brief following the structure above, including only sections with meaningful content.
-        """
+        # Load prompt template and format it with context
+        prompt_template = self._load_prompt_template()
+        prompt = prompt_template.format(analysis_context=analysis_context, series=series)
 
         response = self.client.messages.create(
             model="claude-sonnet-4-20250514",
@@ -478,7 +442,14 @@ Provide an executive brief following the structure above, including only section
             messages=[{"role": "user", "content": prompt}],
         )
 
-        return response.content[0].text
+        # Capture token usage for cost tracking and transparency
+        token_usage = {
+            "input_tokens": response.usage.input_tokens,
+            "output_tokens": response.usage.output_tokens,
+            "model": "claude-sonnet-4-20250514",
+        }
+
+        return {"analysis": response.content[0].text, "token_usage": token_usage}
 
 
 @click.group()
@@ -608,7 +579,7 @@ def analyze(days, include_applied, no_comments, max_patches, claude_key, output)
         else:
             click.echo("Analyzing patchset with Claude (patch content only)...")
 
-        analysis = analyzer.analyze_patchset(
+        result = analyzer.analyze_patchset(
             selected_series,
             patches,
             client=client,
@@ -616,13 +587,360 @@ def analyze(days, include_applied, no_comments, max_patches, claude_key, output)
             max_patches=max_patches,
         )
 
+        analysis_text = result["analysis"]
+        token_usage = result["token_usage"]
+
+        # Display token usage for transparency
+        click.echo(f"📊 Token usage - Input: {token_usage['input_tokens']}, Output: {token_usage['output_tokens']}")
+
         if output:
             with open(output, "w") as f:
-                f.write(analysis)
+                f.write(analysis_text)
             click.echo(f"Analysis saved to {output}")
         else:
             click.echo("\n" + "=" * 80 + "\n")
-            click.echo(analysis)
+            click.echo(analysis_text)
+
+    except Exception as e:
+        click.echo(f"Error: {e}", err=True)
+
+
+@cli.command()
+@click.option("--days", default=14, help="Days to look back for patches")
+@click.option("--max-series", default=10, help="Maximum number of series to analyze")
+@click.option("--output-dir", default="reports", help="Output directory for reports")
+@click.option("--claude-key", envvar="ANTHROPIC_API_KEY", help="Claude API key")
+@click.option("--no-comments", is_flag=True, help="Skip community comments (faster)")
+@click.option("--summary-report", is_flag=True, help="Generate combined summary report")
+@click.option("--max-patches", default=5, help="Maximum patches per series")
+def analyze_bulk(days, max_series, output_dir, claude_key, no_comments, summary_report, max_patches):
+    """Analyze multiple recent patch series in batch"""
+    if not claude_key:
+        click.echo("Error: Claude API key is required for analysis.", err=True)
+        click.echo(
+            "Either set the ANTHROPIC_API_KEY environment variable or use --claude-key",
+            err=True,
+        )
+        return
+
+    import os
+    from pathlib import Path
+
+    client = PatchworkClient()
+    analyzer = ClaudeAnalyzer(claude_key)
+
+    try:
+        project_id = client.get_rust_for_linux_project_id()
+        series_list = client.get_recent_series(project_id, days, include_applied=False)
+
+        if not series_list:
+            click.echo("No recent patch series found")
+            return
+
+        # Sort by date (newest first) and limit series to analyze
+        series_list.sort(key=lambda x: x.date, reverse=True)
+        series_to_analyze = series_list[:max_series]
+
+        click.echo(f"Found {len(series_list)} recent series, analyzing top {len(series_to_analyze)}")
+
+        # Create output directory
+        output_path = Path(output_dir)
+        timestamp_dir = output_path / datetime.now().strftime("%Y-%m-%d")
+        timestamp_dir.mkdir(parents=True, exist_ok=True)
+
+        # Track results for summary and web export
+        analysis_results = []
+        failed_analyses = []
+
+        # Process each series
+        for i, series in enumerate(series_to_analyze, 1):
+            click.echo(f"\n[{i}/{len(series_to_analyze)}] Analyzing: {series.name}")
+
+            try:
+                # Fetch patches
+                click.echo("  Fetching patches...")
+                patches = []
+                for patch_info in series.patches[:max_patches]:
+                    try:
+                        patch = client.get_patch_content(patch_info["id"])
+                        patches.append(patch)
+                    except Exception as e:
+                        click.echo(f"    Warning: Failed to fetch patch {patch_info['id']}: {e}")
+                        continue
+
+                if not patches:
+                    click.echo("  Error: No patches could be fetched")
+                    failed_analyses.append((series, "No patches available"))
+                    continue
+
+                # Analyze with Claude
+                include_comments = not no_comments
+                click.echo(f"  Analyzing with Claude ({len(patches)} patches)...")
+
+                result = analyzer.analyze_patchset(
+                    series,
+                    patches,
+                    client=client,
+                    include_comments=include_comments,
+                    max_patches=max_patches,
+                )
+
+                analysis_text = result["analysis"]
+                token_usage = result["token_usage"]
+
+                click.echo(f"  📊 Tokens: {token_usage['input_tokens']} in / {token_usage['output_tokens']} out")
+
+                # Save individual analysis
+                filename = f"series-{series.id}.md"
+                filepath = timestamp_dir / filename
+                with open(filepath, "w") as f:
+                    f.write(f"# Analysis: {series.name}\n\n")
+                    f.write(f"**Generated**: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+                    f.write(f"**Series ID**: {series.id}\n")
+                    f.write(f"**Author**: {series.submitter.get('name', 'Unknown')}\n")
+                    f.write(f"**Date**: {series.date.strftime('%Y-%m-%d')}\n")
+                    f.write(f"**Patches**: {series.total}\n")
+                    f.write(f"**Patchwork URL**: {series.web_url}\n\n")
+                    f.write(
+                        f"**Token Usage**: {token_usage['input_tokens']} input / "
+                        f"{token_usage['output_tokens']} output\n\n"
+                    )
+                    f.write("---\n\n")
+                    f.write(analysis_text)
+
+                # Store for summary and web export
+                analysis_results.append(
+                    {
+                        "series": series,
+                        "analysis": analysis_text,
+                        "patches": patches,
+                        "filepath": str(filepath),
+                        "token_usage": token_usage,
+                    }
+                )
+
+                click.echo(f"  ✓ Saved to {filepath}")
+
+            except Exception as e:
+                click.echo(f"  ✗ Failed: {e}")
+                failed_analyses.append((series, str(e)))
+                continue
+
+        # Generate summary report if requested
+        if summary_report:
+            click.echo("\nGenerating summary report...")
+            summary_path = timestamp_dir / "summary.md"
+
+            with open(summary_path, "w") as f:
+                f.write("# Rust for Linux Patch Analysis Summary\n\n")
+                f.write(f"**Generated**: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+                f.write(f"**Period**: Last {days} days\n")
+                f.write(f"**Analyzed**: {len(analysis_results)}/{len(series_to_analyze)} series\n\n")
+
+                if failed_analyses:
+                    f.write("## Failed Analyses ({})\n\n".format(len(failed_analyses)))
+                    for series, error in failed_analyses:
+                        f.write(f"- **{series.name}**: {error}\n")
+                    f.write("\n")
+
+                f.write("## Successful Analyses ({})\n\n".format(len(analysis_results)))
+                for result in analysis_results:
+                    series = result["series"]
+                    f.write(f"### {series.name}\n\n")
+                    f.write(f"- **Author**: {series.submitter.get('name', 'Unknown')}\n")
+                    f.write(f"- **Date**: {series.date.strftime('%Y-%m-%d')}\n")
+                    f.write(f"- **Patches**: {series.total}\n")
+                    f.write(f"- **Report**: [{result['filepath']}]({os.path.basename(result['filepath'])})\n")
+                    f.write(f"- **Patchwork**: {series.web_url}\n\n")
+
+            click.echo(f"✓ Summary saved to {summary_path}")
+
+        # Auto-generate web UI data
+        click.echo("\nGenerating web UI data...")
+        web_data_path = Path("web-ui/src/data/patches.json")
+
+        # Calculate total token usage across all analyses
+        total_input_tokens = sum(result.get("token_usage", {}).get("input_tokens", 0) for result in analysis_results)
+        total_output_tokens = sum(result.get("token_usage", {}).get("output_tokens", 0) for result in analysis_results)
+
+        # Create enhanced export data with analysis summaries and token usage
+        export_data = {
+            "metadata": {
+                "generated_at": datetime.now().isoformat(),
+                "project": "rust-for-linux",
+                "days_back": days,
+                "include_applied": False,
+                "total_series": len(analysis_results),
+                "analysis_method": "claude_bulk",
+                "token_usage": {
+                    "total_input_tokens": total_input_tokens,
+                    "total_output_tokens": total_output_tokens,
+                    "model": "claude-sonnet-4-20250514",
+                    "analysis_count": len(analysis_results),
+                },
+            },
+            "patch_series": [],
+        }
+
+        for result in analysis_results:
+            series = result["series"]
+            patches = result["patches"]
+
+            # Get engagement analysis
+            engagement = analyzer._analyze_engagement(series, patches)
+
+            # Extract key insights from Claude analysis (simplified)
+            analysis_text = result["analysis"]
+            status = "Under Review"  # Default
+            if "ready" in analysis_text.lower():
+                status = "Ready"
+            elif "stall" in analysis_text.lower():
+                status = "Stalled"
+            elif "strategic" in analysis_text.lower():
+                status = "Strategic Development"
+
+            series_data = {
+                "id": series.id,
+                "name": series.name,
+                "date": series.date.isoformat(),
+                "submitter": {
+                    "name": (series.submitter.get("name", "Unknown") if series.submitter else "Unknown"),
+                    "email": (series.submitter.get("email", "") if series.submitter else ""),
+                },
+                "total_patches": series.total,
+                "web_url": series.web_url,
+                "engagement": {
+                    "version": engagement["version"],
+                    "days_since_posting": engagement["days_since_posting"],
+                    "endorsements": {
+                        "signed_off_by": len(engagement["endorsements"]["signed_off_by"]),
+                        "acked_by": len(engagement["endorsements"]["acked_by"]),
+                        "reviewed_by": len(engagement["endorsements"]["reviewed_by"]),
+                        "tested_by": len(engagement["endorsements"]["tested_by"]),
+                    },
+                },
+                "analysis": {
+                    "status": status,
+                    "significance": "Generated by Claude analysis",
+                    "summary": analysis_text,
+                    "technical_context": "See detailed analysis report",
+                    "patches": [
+                        {
+                            "id": i + 1,
+                            "name": f"Patch {i+1}",
+                            "description": "See full report",
+                        }
+                        for i in range(min(3, len(patches)))
+                    ],
+                    "issues": [],
+                },
+            }
+            export_data["patch_series"].append(series_data)
+
+        # Ensure web-ui directory exists
+        web_data_path.parent.mkdir(parents=True, exist_ok=True)
+
+        with open(web_data_path, "w") as f:
+            json.dump(export_data, f, indent=2, default=str)
+
+        click.echo(f"✓ Web UI data saved to {web_data_path}")
+
+        # Final summary
+        click.echo("\n🎉 Bulk analysis complete!")
+        click.echo(f"✓ Analyzed: {len(analysis_results)}/{len(series_to_analyze)} series")
+        click.echo(f"✗ Failed: {len(failed_analyses)} series")
+        click.echo(f"📊 Token usage: {total_input_tokens} input / {total_output_tokens} output")
+        click.echo(f"📁 Reports: {timestamp_dir}")
+        click.echo(f"🌐 Web UI: {web_data_path}")
+
+    except Exception as e:
+        click.echo(f"Error: {e}", err=True)
+
+
+@cli.command()
+@click.option("--days", default=90, help="Days to look back for patches")
+@click.option("--include-applied", is_flag=True, help="Include already applied patch series")
+@click.option("--output", "-o", required=True, help="Output JSON file")
+def export_json(days, include_applied, output):
+    """Export patch data as JSON for web UI consumption"""
+    client = PatchworkClient()
+
+    try:
+        project_id = client.get_rust_for_linux_project_id()
+        series_list = client.get_recent_series(project_id, days, include_applied)
+
+        if not series_list:
+            click.echo("No recent patch series found")
+            return
+
+        # Convert series data to JSON-serializable format
+        export_data = {
+            "metadata": {
+                "generated_at": datetime.now().isoformat(),
+                "project": "rust-for-linux",
+                "days_back": days,
+                "include_applied": include_applied,
+                "total_series": len(series_list),
+            },
+            "patch_series": [],
+        }
+
+        click.echo(f"Exporting {len(series_list)} patch series...")
+
+        for series in series_list:
+            # Get engagement analysis for each series
+            analyzer = ClaudeAnalyzer("dummy-key")  # Just for analysis function
+            try:
+                # Get first few patches for analysis
+                patches = []
+                for patch_ref in series.patches[:3]:  # Limit to first 3 patches
+                    try:
+                        patch = client.get_patch_content(patch_ref["id"])
+                        patches.append(patch)
+                    except Exception:
+                        continue  # Skip failed patches
+
+                engagement = analyzer._analyze_engagement(series, patches)
+            except Exception:
+                engagement = {
+                    "version": 1,
+                    "days_since_posting": 0,
+                    "endorsements": {
+                        "signed_off_by": [],
+                        "acked_by": [],
+                        "reviewed_by": [],
+                        "tested_by": [],
+                    },
+                }
+
+            series_data = {
+                "id": series.id,
+                "name": series.name,
+                "date": series.date.isoformat(),
+                "submitter": {
+                    "name": (series.submitter.get("name", "Unknown") if series.submitter else "Unknown"),
+                    "email": (series.submitter.get("email", "") if series.submitter else ""),
+                },
+                "total_patches": series.total,
+                "web_url": series.web_url,
+                "engagement": {
+                    "version": engagement["version"],
+                    "days_since_posting": engagement["days_since_posting"],
+                    "endorsements": {
+                        "signed_off_by": len(engagement["endorsements"]["signed_off_by"]),
+                        "acked_by": len(engagement["endorsements"]["acked_by"]),
+                        "reviewed_by": len(engagement["endorsements"]["reviewed_by"]),
+                        "tested_by": len(engagement["endorsements"]["tested_by"]),
+                    },
+                },
+            }
+            export_data["patch_series"].append(series_data)
+
+        # Write to JSON file
+        with open(output, "w") as f:
+            json.dump(export_data, f, indent=2, default=str)
+
+        click.echo(f"Data exported to {output}")
 
     except Exception as e:
         click.echo(f"Error: {e}", err=True)

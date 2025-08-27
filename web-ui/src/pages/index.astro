@@ -1,0 +1,675 @@
+---
+import '../styles/global.css';
+import { readFileSync } from 'fs';
+import { fileURLToPath } from 'url';
+import path from 'path';
+
+// Load prompt template
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const promptTemplatePath = path.resolve(__dirname, '../../../prompt_template.txt');
+let promptTemplate;
+try {
+  promptTemplate = readFileSync(promptTemplatePath, 'utf-8');
+} catch (e) {
+  promptTemplate = 'Could not load prompt template file.';
+}
+
+// Try to import real data first, fall back to sample data if empty or missing
+let patchData;
+try {
+  patchData = await import('../data/patches.json');
+  // If patches.json has no actual data (placeholder), use sample data instead
+  if (!patchData.patch_series || patchData.patch_series.length === 0) {
+    patchData = await import('../data/sample-patches.json');
+  }
+} catch (e) {
+  // Fall back to sample data if real data doesn't exist
+  patchData = await import('../data/sample-patches.json');
+}
+
+const { metadata, patch_series } = patchData;
+
+// Calculate summary statistics with safety checks
+const totalEndorsements = patch_series?.reduce((sum, series) => {
+  const endorsements = series.engagement?.endorsements;
+  if (!endorsements) return sum;
+  return sum + (endorsements.signed_off_by || 0) + (endorsements.acked_by || 0) + (endorsements.reviewed_by || 0) + (endorsements.tested_by || 0);
+}, 0) || 0;
+
+const avgVersion = patch_series?.length ? Math.round(patch_series.reduce((sum, series) => sum + (series.engagement?.version || 1), 0) / patch_series.length * 10) / 10 : 1;
+
+const recentSeries = patch_series?.filter(series => (series.engagement?.days_since_posting || 0) <= 14).length || 0;
+---
+
+<!doctype html>
+<html lang="en" data-theme="rustlinux">
+	<head>
+		<meta charset="utf-8" />
+		<link rel="icon" type="image/svg+xml" href={`${import.meta.env.BASE_URL}favicon.svg`} />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<meta name="generator" content={Astro.generator} />
+		<title>Rust for Linux Patch Monitor</title>
+		<meta name="description" content="Monitor and analyze Rust for Linux kernel patches" />
+	</head>
+	<body class="min-h-screen bg-base-100 text-base-content font-sans">
+		<!-- Header -->
+		<header class="navbar bg-primary text-primary-content shadow-lg">
+			<div class="flex-1">
+				<h1 class="text-xl font-bold">🦀 Rust for Linux Patch Monitor</h1>
+			</div>
+			<div class="flex-none">
+				<div class="text-sm opacity-75">
+					Last updated: {new Date(metadata?.generated_at || new Date()).toLocaleString()}
+				</div>
+			</div>
+		</header>
+
+		<!-- Main Content - Modern Two-Column Layout -->
+		<main class="h-[calc(100vh-80px)]">
+			<div class="grid gap-4 lg:grid-cols-[420px_1fr] h-full">
+				<!-- Left Panel - Patch Series List -->
+				<aside class="flex flex-col space-y-3 h-full">
+					<!-- Filter Toolbar -->
+					<div class="p-4 bg-base-200">
+						<div class="flex gap-2 justify-between">
+							<div class="dropdown dropdown-end">
+								<button tabindex="0" role="button" class="btn btn-sm btn-outline">
+									Status
+									<svg class="w-3 h-3 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+									</svg>
+								</button>
+								<ul tabindex="0" class="dropdown-content z-[1] menu p-2 shadow bg-base-100 rounded-box w-40">
+									<li><label class="label cursor-pointer gap-2"><input type="checkbox" class="checkbox checkbox-sm" data-status="Ready" /><span class="label-text">Ready</span></label></li>
+									<li><label class="label cursor-pointer gap-2"><input type="checkbox" class="checkbox checkbox-sm" data-status="Under Review" /><span class="label-text">Under Review</span></label></li>
+								</ul>
+							</div>
+							<select id="sort-select" class="select select-sm bg-base-100">
+								<option value="date">Newest</option>
+								<option value="engagement">Most Active</option>
+								<option value="signoffs">Most Signoffs</option>
+							</select>
+						</div>
+					</div>
+					
+					<!-- Scrollable Series List -->
+					<div class="flex-1 overflow-y-auto px-4 pb-4">
+						<!-- Skeleton loaders (hidden by default) -->
+						<div id="skeleton-loaders" class="space-y-2 hidden">
+							{Array.from({ length: 3 }, (_, i) => (
+								<div class="card card-compact bg-base-200 border border-base-300 animate-pulse">
+									<div class="card-body p-3 gap-2">
+										<div class="flex items-start justify-between">
+											<div class="h-4 bg-base-300 rounded w-3/4"></div>
+											<div class="h-5 bg-base-300 rounded w-8"></div>
+										</div>
+										<div class="flex gap-2">
+											<div class="h-3 bg-base-300 rounded w-16"></div>
+											<div class="h-3 bg-base-300 rounded w-12"></div>
+											<div class="h-3 bg-base-300 rounded w-20"></div>
+										</div>
+										<div class="flex gap-2">
+											<div class="h-4 bg-base-300 rounded w-6"></div>
+											<div class="h-4 bg-base-300 rounded w-6"></div>
+											<div class="h-4 bg-base-300 rounded w-6"></div>
+										</div>
+									</div>
+								</div>
+							))}
+						</div>
+
+						<ul class="space-y-2" role="listbox">
+							{(patch_series || []).map((series, index) => (
+								<li 
+									class={`patch-series-card card card-compact bg-base-200 hover:bg-base-300 transition border cursor-pointer min-h-[84px] ${index === 0 ? 'border-primary' : 'border-base-300'}`}
+									data-series-id={series.id}
+									data-series-index={index}
+									aria-selected={index === 0}
+								>
+									<div class="card-body gap-2 p-3">
+										<div class="flex items-start justify-between">
+											<h3 class="font-semibold leading-snug line-clamp-2 text-[15px]">{series.name}</h3>
+											<span class="badge badge-outline badge-sm flex-shrink-0 ml-2">v{series.engagement?.version || 1}</span>
+										</div>
+
+										<div class="flex flex-wrap items-center gap-2 text-sm text-base-content/70">
+											<span class="badge badge-sm badge-ghost">{series.analysis?.status || 'Unknown'}</span>
+											<span class="inline-flex items-center gap-1">
+												<svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+													<path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd"></path>
+												</svg>
+												{series.submitter?.name || 'Unknown'}
+											</span>
+											<span aria-label="Age">{series.engagement?.days_since_posting || 0}d</span>
+											<span aria-label="Patches">{series.total_patches || 0} patch{(series.total_patches || 0) > 1 ? 'es' : ''}</span>
+										</div>
+
+										<div class="flex gap-2">
+											{(series.engagement?.endorsements?.signed_off_by || 0) > 0 && (
+												<span class="badge badge-sm badge-success">✓ {series.engagement?.endorsements?.signed_off_by || 0}</span>
+											)}
+											{(series.engagement?.endorsements?.acked_by || 0) > 0 && (
+												<span class="badge badge-sm badge-info">↪ {series.engagement?.endorsements?.acked_by || 0}</span>
+											)}
+											{(series.engagement?.endorsements?.reviewed_by || 0) > 0 && (
+												<span class="badge badge-sm badge-warning">📝 {series.engagement?.endorsements?.reviewed_by || 0}</span>
+											)}
+											{(series.engagement?.endorsements?.tested_by || 0) > 0 && (
+												<span class="badge badge-sm badge-ghost">🧪 {series.engagement?.endorsements?.tested_by || 0}</span>
+											)}
+										</div>
+									</div>
+								</li>
+							))}
+						</ul>
+					</div>
+				</aside>
+
+				<!-- Right Panel - Analysis Details with Sticky Header -->
+				<main class="card bg-base-200 border border-base-300 flex flex-col">
+					<!-- Sticky Header -->
+					<header class="sticky top-0 z-10 bg-base-200/90 backdrop-blur border-b border-base-300 p-4 flex items-center justify-between">
+						<div class="flex-1 min-w-0">
+							<h2 class="text-xl font-semibold truncate" id="analysis-title">{patch_series?.[0]?.name || 'No Data Available'}</h2>
+							<p class="text-sm text-base-content/70" id="analysis-subtitle">
+								By <span id="analysis-author">{patch_series?.[0]?.submitter?.name || 'Unknown'}</span> • 
+								<span id="analysis-date">{patch_series?.[0]?.date ? new Date(patch_series[0].date).toLocaleDateString() : 'Unknown'}</span> • 
+								<span id="analysis-patches">{patch_series?.[0]?.total_patches || 0} patches</span>
+							</p>
+						</div>
+						<div class="flex gap-2 flex-shrink-0">
+							<a href={patch_series?.[0]?.web_url || '#'} target="_blank" rel="noopener" class="btn btn-sm btn-outline" id="patchwork-link">
+								View on Patchwork
+								<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="inline-block w-4 h-4 stroke-current ml-1">
+									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path>
+								</svg>
+							</a>
+							<button class="btn btn-sm btn-primary" id="copy-link-btn">Copy Link</button>
+						</div>
+					</header>
+
+					<!-- Scrollable Content -->
+					<section class="flex-1 overflow-y-auto p-4" id="analysis-panel">
+						<!-- Skeleton loader for analysis (hidden by default) -->
+						<div id="analysis-skeleton" class="hidden animate-pulse space-y-4">
+							<div class="flex gap-2">
+								<div class="h-6 bg-base-300 rounded-full w-16"></div>
+								<div class="h-6 bg-base-300 rounded-full w-8"></div>
+								<div class="h-6 bg-base-300 rounded-full w-10"></div>
+							</div>
+							<div class="card bg-base-300">
+								<div class="card-body p-4 space-y-3">
+									<div class="h-4 bg-base-300 rounded w-full"></div>
+									<div class="h-4 bg-base-300 rounded w-3/4"></div>
+									<div class="h-4 bg-base-300 rounded w-1/2"></div>
+								</div>
+							</div>
+						</div>
+
+						<!-- Status Badge and Metadata -->
+						<div class="flex items-center gap-2 mb-4">
+							<div class="badge badge-lg" id="analysis-status-badge">{patch_series?.[0]?.analysis?.status || 'No Data'}</div>
+							<div class="badge badge-primary">v<span id="analysis-version">{patch_series?.[0]?.engagement?.version || 1}</span></div>
+							<div class="badge badge-outline"><span id="analysis-days">{patch_series?.[0]?.engagement?.days_since_posting || 0}</span>d</div>
+						</div>
+
+						<div class="space-y-6">
+							<!-- Executive Summary (Markdown Content) -->
+							<div class="card bg-base-300">
+								<div class="card-body p-4">
+									<div class="prose prose-sm max-w-none prose-invert" id="analysis-summary">
+										<div id="analysis-summary-content">
+											<p>Loading analysis...</p>
+										</div>
+									</div>
+								</div>
+							</div>
+
+							<!-- Community Engagement -->
+							<div class="card bg-base-300">
+								<div class="card-body p-4">
+									<h3 class="font-semibold text-base-content mb-3">🤝 Community Engagement</h3>
+									<div class="flex flex-wrap gap-3 text-sm" id="engagement-metrics">
+										<div class="flex items-center gap-1" id="signoffs-metric">
+											<span>✏️</span>
+											<span id="signoffs-count">{patch_series?.[0]?.engagement?.endorsements?.signed_off_by || 0}</span>
+											<span class="text-base-content/70">Sign-offs</span>
+										</div>
+										<div class="flex items-center gap-1" id="acks-metric">
+											<span>✅</span>
+											<span id="acks-count">{patch_series?.[0]?.engagement?.endorsements?.acked_by || 0}</span>
+											<span class="text-base-content/70">Acked-by</span>
+										</div>
+										<div class="flex items-center gap-1" id="reviews-metric">
+											<span>👀</span>
+											<span id="reviews-count">{patch_series?.[0]?.engagement?.endorsements?.reviewed_by || 0}</span>
+											<span class="text-base-content/70">Reviews</span>
+										</div>
+										<div class="flex items-center gap-1" id="tests-metric">
+											<span>🧪</span>
+											<span id="tests-count">{patch_series?.[0]?.engagement?.endorsements?.tested_by || 0}</span>
+											<span class="text-base-content/70">Tests</span>
+										</div>
+									</div>
+									<div class="text-xs text-base-content/60 mt-2">
+										<span id="activity-age">{patch_series?.[0]?.engagement?.days_since_posting || 0} days since posting</span>
+									</div>
+								</div>
+							</div>
+
+							<!-- Issues (if any) -->
+							<div class="card bg-base-300" id="issues-card" style={(patch_series?.[0]?.analysis?.issues?.length || 0) === 0 ? 'display: none' : ''}>  
+								<div class="card-body p-4">
+									<h3 class="font-semibold text-base-content mb-3">⚠️ Issues & Concerns</h3>
+									<div class="space-y-1" id="issues-list">
+										{(patch_series?.[0]?.analysis?.issues || []).map((issue) => (
+											<div class="text-sm text-warning">• {issue}</div>
+										))}
+									</div>
+								</div>
+							</div>
+						</div>
+					</section>
+				</main>
+			</div>
+		</main>
+
+
+		<!-- About Footer -->
+		<footer class="bg-base-200 text-base-content border-t border-base-300">
+			<div class="max-w-7xl mx-auto p-6">
+				<div class="flex items-center gap-3 mb-6">
+					<span class="text-3xl">🦀</span>
+					<h3 class="text-xl font-bold">About Rust Patch Monitor</h3>
+				</div>
+
+				<div class="grid gap-6 md:grid-cols-3">
+					<!-- Analysis Metrics -->
+					<div class="card bg-base-300">
+						<div class="card-body p-4">
+							<h4 class="font-semibold text-base-content mb-3 flex items-center gap-2">
+								📊 Analysis Metrics
+							</h4>
+							<div class="text-sm space-y-2">
+								<div class="flex justify-between">
+									<span>Input Tokens:</span>
+									<span class="font-mono">
+										{metadata?.token_usage?.total_input_tokens?.toLocaleString() || 'N/A'}
+									</span>
+								</div>
+								<div class="flex justify-between">
+									<span>Output Tokens:</span>
+									<span class="font-mono">
+										{metadata?.token_usage?.total_output_tokens?.toLocaleString() || 'N/A'}
+									</span>
+								</div>
+								<div class="flex justify-between">
+									<span>Model:</span>
+									<span class="font-mono text-xs">
+										{metadata?.token_usage?.model || 'Claude Sonnet 4'}
+									</span>
+								</div>
+								<div class="flex justify-between">
+									<span>Analyses:</span>
+									<span class="font-mono">
+										{metadata?.token_usage?.analysis_count || patch_series?.length || 0}
+									</span>
+								</div>
+							</div>
+						</div>
+					</div>
+
+					<!-- Data Source -->
+					<div class="card bg-base-300">
+						<div class="card-body p-4">
+							<h4 class="font-semibold text-base-content mb-3 flex items-center gap-2">
+								🔍 Data Source
+							</h4>
+							<div class="text-sm space-y-2">
+								<div class="flex justify-between">
+									<span>Project:</span>
+									<span class="font-mono">{metadata?.project || 'rust-for-linux'}</span>
+								</div>
+								<div class="flex justify-between">
+									<span>Period:</span>
+									<span>Last {metadata?.days_back || 14} days</span>
+								</div>
+								<div class="flex justify-between">
+									<span>Series:</span>
+									<span>{metadata?.total_series || patch_series?.length || 0} patch series</span>
+								</div>
+								<div class="flex justify-between">
+									<span>Method:</span>
+									<span>Patchwork API + Claude AI</span>
+								</div>
+							</div>
+						</div>
+					</div>
+
+					<!-- How It Works -->
+					<div class="card bg-base-300">
+						<div class="card-body p-4">
+							<h4 class="font-semibold text-base-content mb-3 flex items-center gap-2">
+								ℹ️ How It Works
+							</h4>
+							<div class="text-sm space-y-2">
+								<p>• Fetches latest patches from Patchwork</p>
+								<p>• Analyzes with Claude AI for insights</p>
+								<p>• Generates interactive dashboard</p>
+								<p>• Updates manually via GitHub Actions</p>
+							</div>
+						</div>
+					</div>
+				</div>
+
+				<!-- AI Prompt Template - Full Width Row -->
+				<div class="mt-6">
+					<div class="card bg-base-300">
+						<div class="card-body p-6">
+							<h4 class="font-semibold text-base-content mb-4 flex items-center gap-2">
+								🤖 AI Prompt Template
+								<div class="ml-auto flex gap-2">
+									<a href="https://github.com/teg/rust-patch-monitor/edit/main/prompt_template.txt" target="_blank" rel="noopener" class="btn btn-sm btn-outline">
+										<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+											<path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" />
+										</svg>
+										Contribute
+									</a>
+									<button class="btn btn-sm btn-ghost ml-auto" id="toggle-prompt">Show Prompt</button>
+								</div>
+							</h4>
+							<div class="text-sm space-y-3" id="prompt-description">
+								<p class="text-base-content/80">The structured prompt template used by Claude AI to analyze each Rust for Linux patch series. This template guides the AI to provide executive-level technical briefings with consistent formatting and focus areas.</p>
+								<div class="flex flex-wrap gap-4">
+									<span class="badge badge-outline">📋 Executive briefing format</span>
+									<span class="badge badge-outline">🎯 Technical context guidelines</span>
+									<span class="badge badge-outline">📊 Engagement analysis</span>
+									<span class="badge badge-outline">⚠️ Issue identification</span>
+								</div>
+							</div>
+							<div id="prompt-content" class="hidden mt-4">
+								<div class="bg-base-100 rounded-lg p-4 border border-base-300">
+									<pre class="text-sm leading-relaxed overflow-x-auto whitespace-pre-wrap"><code id="prompt-template-content">Loading prompt template...</code></pre>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+
+				<!-- Simple footer info -->
+				<div class="text-center text-xs opacity-70 mt-6 pt-4 border-t border-base-300">
+					<p>Generated from rust-for-linux project • Data refreshed manually</p>
+				</div>
+			</div>
+		</footer>
+
+		<script define:vars={{ patch_series, promptTemplate }}>
+			// Client-side interactivity for patch series selection
+			document.addEventListener('DOMContentLoaded', function() {
+				const cards = document.querySelectorAll('.patch-series-card');
+				const copyLinkBtn = document.getElementById('copy-link-btn');
+				const sortSelect = document.getElementById('sort-select');
+				const statusCheckboxes = document.querySelectorAll('[data-status]');
+				let selectedIndex = 0;
+				let filteredSeries = [...(patch_series || [])];
+
+				// Load URL parameters on page load
+				const urlParams = new URLSearchParams(window.location.search);
+				if (urlParams.get('sort')) {
+					sortSelect.value = urlParams.get('sort');
+				}
+				if (urlParams.get('status')) {
+					const statusFilters = urlParams.get('status').split(',');
+					statusCheckboxes.forEach(cb => {
+						if (statusFilters.includes(cb.dataset.status)) {
+							cb.checked = true;
+						}
+					});
+				}
+
+				// Status badge color mapping
+				const statusColors = {
+					'Ready': 'badge-success',
+					'Ready to Merge': 'badge-success',
+					'Under Review': 'badge-info',
+					'Strategic Development': 'badge-warning',
+					'Stalled': 'badge-error'
+				};
+
+				// Update URL parameters
+				function updateUrlParams() {
+					const params = new URLSearchParams();
+					
+					const selectedStatuses = Array.from(statusCheckboxes)
+						.filter(cb => cb.checked)
+						.map(cb => cb.dataset.status);
+					if (selectedStatuses.length > 0) params.set('status', selectedStatuses.join(','));
+					
+					if (sortSelect.value !== 'date') params.set('sort', sortSelect.value);
+					
+					const newUrl = params.toString() ? `${window.location.pathname}?${params.toString()}` : window.location.pathname;
+					window.history.replaceState({}, '', newUrl);
+				}
+
+				// Filter and sort series
+				function applyFiltersAndSort() {
+					let filtered = [...(patch_series || [])];
+					
+					// Apply status filter
+					const selectedStatuses = Array.from(statusCheckboxes)
+						.filter(cb => cb.checked)
+						.map(cb => cb.dataset.status);
+					if (selectedStatuses.length > 0) {
+						filtered = filtered.filter(series => selectedStatuses.includes(series.analysis?.status || 'Unknown'));
+					}
+					
+					// Apply sorting
+					switch (sortSelect.value) {
+						case 'engagement':
+							filtered.sort((a, b) => {
+								const aTotal = (a.engagement?.endorsements?.signed_off_by || 0) + (a.engagement?.endorsements?.acked_by || 0) + (a.engagement?.endorsements?.reviewed_by || 0);
+								const bTotal = (b.engagement?.endorsements?.signed_off_by || 0) + (b.engagement?.endorsements?.acked_by || 0) + (b.engagement?.endorsements?.reviewed_by || 0);
+								return bTotal - aTotal;
+							});
+							break;
+						case 'signoffs':
+							filtered.sort((a, b) => (b.engagement?.endorsements?.signed_off_by || 0) - (a.engagement?.endorsements?.signed_off_by || 0));
+							break;
+						case 'date':
+						default:
+							filtered.sort((a, b) => new Date(b.date) - new Date(a.date));
+							break;
+					}
+					
+					filteredSeries = filtered;
+					updateVisibleCards();
+					updateUrlParams();
+				}
+
+				// Update visible cards based on filtered series
+				function updateVisibleCards() {
+					cards.forEach((card, index) => {
+						const seriesId = parseInt(card.dataset.seriesId);
+						const isVisible = filteredSeries.some(series => series.id === seriesId);
+						card.style.display = isVisible ? 'block' : 'none';
+					});
+					
+					// Update selected index to first visible card
+					if (filteredSeries.length > 0) {
+						const firstVisibleIndex = (patch_series || []).findIndex(series => series.id === filteredSeries[0].id);
+						if (firstVisibleIndex !== -1) {
+							selectCard(firstVisibleIndex);
+						}
+					}
+				}
+
+				// Copy link functionality
+				if (copyLinkBtn) {
+					copyLinkBtn.addEventListener('click', () => {
+						const currentUrl = new URL(window.location);
+						if (patch_series && patch_series[selectedIndex]) {
+							currentUrl.searchParams.set('series', patch_series[selectedIndex].id);
+						}
+						navigator.clipboard.writeText(currentUrl.toString()).then(() => {
+							copyLinkBtn.textContent = 'Copied!';
+							setTimeout(() => {
+								copyLinkBtn.textContent = 'Copy Link';
+							}, 2000);
+						});
+					});
+				}
+
+
+				// Event listeners for filters
+				sortSelect?.addEventListener('change', applyFiltersAndSort);
+				statusCheckboxes.forEach(cb => {
+					cb.addEventListener('change', applyFiltersAndSort);
+				});
+
+
+				// Apply initial filters from URL
+				applyFiltersAndSort();
+
+				// Simple markdown to HTML converter for basic formatting
+				function renderMarkdown(text) {
+					if (!text) return '';
+					
+					return text
+						// Headers
+						.replace(/^### (.*$)/gim, '<h3 class="text-lg font-semibold text-base-content mt-4 mb-2">$1</h3>')
+						.replace(/^## (.*$)/gim, '<h2 class="text-xl font-bold text-base-content mt-4 mb-3">$1</h2>')
+						.replace(/^# (.*$)/gim, '<h1 class="text-2xl font-bold text-base-content mt-4 mb-3">$1</h1>')
+						// Bold
+						.replace(/\*\*(.*?)\*\*/g, '<strong class="font-semibold">$1</strong>')
+						// Line breaks and paragraphs
+						.replace(/\n\n/g, '</p><p class="mb-2">')
+						.replace(/\n/g, '<br>')
+						// Wrap in paragraph tags
+						.replace(/^(?!<[h123]|<strong)(.*)/, '<p class="mb-2">$1')
+						.replace(/(.*)(?![h123]>|trong>)$/, '$1</p>');
+				}
+
+				function updateAnalysisPanel(seriesIndex) {
+					const series = patch_series?.[seriesIndex];
+					if (!series) return;
+					const analysis = series.analysis || {};
+					
+					// Update basic info
+					document.getElementById('analysis-title').textContent = series.name || 'Unknown';
+					document.getElementById('analysis-author').textContent = series.submitter?.name || 'Unknown';
+					document.getElementById('analysis-date').textContent = series.date ? new Date(series.date).toLocaleDateString() : 'Unknown';
+					document.getElementById('analysis-patches').textContent = `${series.total_patches || 0} patches`;
+					document.getElementById('analysis-version').textContent = series.engagement?.version || 1;
+					document.getElementById('analysis-days').textContent = series.engagement?.days_since_posting || 0;
+					
+					// Update status badge with color
+					const statusBadge = document.getElementById('analysis-status-badge');
+					statusBadge.textContent = analysis.status || 'Unknown';
+					statusBadge.className = `badge badge-lg ${statusColors[analysis.status] || 'badge-neutral'}`;
+					
+					// Render markdown summary
+					const summaryContent = document.getElementById('analysis-summary-content');
+					summaryContent.innerHTML = renderMarkdown(analysis.summary || 'No analysis available.');
+					
+					// Update engagement metrics (emoji-based)
+					const endorsements = series.engagement?.endorsements || {};
+					document.getElementById('signoffs-count').textContent = endorsements.signed_off_by || 0;
+					document.getElementById('acks-count').textContent = endorsements.acked_by || 0;
+					document.getElementById('reviews-count').textContent = endorsements.reviewed_by || 0;
+					document.getElementById('tests-count').textContent = endorsements.tested_by || 0;
+					document.getElementById('activity-age').textContent = `${series.engagement?.days_since_posting || 0} days since posting`;
+					
+					// Update issues section
+					const issuesCard = document.getElementById('issues-card');
+					const issuesList = document.getElementById('issues-list');
+					if (analysis.issues && analysis.issues.length > 0) {
+						issuesList.innerHTML = analysis.issues.map(issue => `
+							<div class="text-sm text-warning">• ${issue}</div>
+						`).join('');
+						issuesCard.style.display = 'block';
+					} else {
+						issuesCard.style.display = 'none';
+					}
+					
+					// Update external link
+					document.getElementById('patchwork-link').href = series.web_url || '#';
+				}
+
+				// Initialize with first patch series
+				if (patch_series && patch_series.length > 0) {
+					updateAnalysisPanel(0);
+				}
+
+				function selectCard(index) {
+					// Remove selection from all cards
+					cards.forEach((card, i) => {
+						if (i === index) {
+							card.classList.remove('border-base-300');
+							card.classList.add('border-primary');
+							card.setAttribute('aria-selected', 'true');
+						} else {
+							card.classList.remove('border-primary');
+							card.classList.add('border-base-300');
+							card.setAttribute('aria-selected', 'false');
+						}
+					});
+					
+					selectedIndex = index;
+					updateAnalysisPanel(index);
+				}
+
+				// Add click handlers to cards
+				cards.forEach((card, index) => {
+					card.addEventListener('click', () => {
+						selectCard(index);
+					});
+				});
+
+				// Keyboard navigation
+				document.addEventListener('keydown', (e) => {
+					if (e.key === 'ArrowUp' && selectedIndex > 0) {
+						e.preventDefault();
+						selectCard(selectedIndex - 1);
+						cards[selectedIndex].scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+					} else if (e.key === 'ArrowDown' && selectedIndex < (cards?.length || 0) - 1) {
+						e.preventDefault();
+						selectCard(selectedIndex + 1);
+						cards[selectedIndex].scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+					} else if (e.key === 'Enter') {
+						e.preventDefault();
+						const series = patch_series?.[selectedIndex];
+						if (series?.web_url) {
+							window.open(series.web_url, '_blank');
+						}
+					}
+				});
+
+				// Prompt toggle functionality
+				const togglePromptBtn = document.getElementById('toggle-prompt');
+				const promptContent = document.getElementById('prompt-content');
+				const promptDescription = document.getElementById('prompt-description');
+				const promptTemplateContent = document.getElementById('prompt-template-content');
+				
+				if (togglePromptBtn && promptContent && promptDescription && promptTemplateContent) {
+					// Load the prompt template content
+					promptTemplateContent.textContent = promptTemplate || 'Could not load prompt template.';
+					
+					togglePromptBtn.addEventListener('click', () => {
+						const isHidden = promptContent.classList.contains('hidden');
+						
+						if (isHidden) {
+							promptContent.classList.remove('hidden');
+							promptDescription.classList.add('hidden');
+							togglePromptBtn.textContent = 'Hide Prompt';
+						} else {
+							promptContent.classList.add('hidden');
+							promptDescription.classList.remove('hidden');
+							togglePromptBtn.textContent = 'Show Prompt';
+						}
+					});
+				}
+			});
+		</script>
+	</body>
+</html>
