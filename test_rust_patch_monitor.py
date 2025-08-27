@@ -134,9 +134,7 @@ class TestTokenUsageCapture:
         mock_patch.content = "Test patch content"
         mock_patch.id = 123
 
-        with patch(
-            "rust_patch_monitor.ClaudeAnalyzer._analyze_engagement"
-        ) as mock_engagement:
+        with patch("rust_patch_monitor.ClaudeAnalyzer._analyze_engagement") as mock_engagement:
             mock_engagement.return_value = {
                 "version": 1,
                 "days_since_posting": 5,
@@ -156,9 +154,7 @@ class TestTokenUsageCapture:
                 mock_client.messages.create.return_value = mock_response
 
                 # Call analyze_patchset
-                result = analyzer.analyze_patchset(
-                    series, [mock_patch], include_comments=False
-                )
+                result = analyzer.analyze_patchset(series, [mock_patch], include_comments=False)
 
                 # Verify result structure
                 assert isinstance(result, dict)
@@ -197,13 +193,9 @@ class TestTokenUsageCapture:
             mock_series.web_url = "https://example.com"
             mock_series.patches = [{"id": 1, "name": "Test patch"}]
 
-            mock_client_instance.get_rust_for_linux_project_id.return_value = (
-                "rust-for-linux"
-            )
+            mock_client_instance.get_rust_for_linux_project_id.return_value = "rust-for-linux"
             mock_client_instance.get_recent_series.return_value = [mock_series]
-            mock_client_instance.get_patch_content.return_value = Mock(
-                content="test", id=1
-            )
+            mock_client_instance.get_patch_content.return_value = Mock(content="test", id=1)
 
             # Setup mock analyzer with token usage
             mock_analyzer_instance = MockAnalyzer.return_value
@@ -318,9 +310,7 @@ class TestXMLGeneration:
         mock_patch.id = 123
 
         # Generate XML (without calling Claude API)
-        with patch(
-            "rust_patch_monitor.ClaudeAnalyzer._analyze_engagement"
-        ) as mock_engagement:
+        with patch("rust_patch_monitor.ClaudeAnalyzer._analyze_engagement") as mock_engagement:
             mock_engagement.return_value = {
                 "version": 1,
                 "days_since_posting": 5,
@@ -339,9 +329,7 @@ class TestXMLGeneration:
                 mock_response.usage = Mock(input_tokens=1000, output_tokens=100)
                 mock_client.messages.create.return_value = mock_response
 
-                result = analyzer.analyze_patchset(
-                    series, [mock_patch], include_comments=False
-                )
+                result = analyzer.analyze_patchset(series, [mock_patch], include_comments=False)
 
                 # Verify we get the new return format
                 assert isinstance(result, dict)
@@ -426,9 +414,7 @@ class TestPatchworkClient:
         client = PatchworkClient()
 
         # Test with include_applied=False (default)
-        series_list = client.get_recent_series(
-            "rust-for-linux", days=90, include_applied=False
-        )
+        series_list = client.get_recent_series("rust-for-linux", days=90, include_applied=False)
 
         # Should filter out GIT,PULL request but keep regular patch
         assert len(series_list) == 1
