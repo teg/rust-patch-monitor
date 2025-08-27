@@ -1,0 +1,34 @@
+{
+  "timestamp": "2025-08-27T23:17:51.839Z",
+  "url": "http://localhost:4321/rust-patch-monitor/",
+  "screenshots": [
+    "full-page.png",
+    "desktop-viewport.png",
+    "tablet-viewport.png",
+    "mobile-viewport.png",
+    "prompt-expanded.png",
+    "patch-selected.png"
+  ],
+  "logs": [
+    "[2025-08-27T23:17:45.650Z] [INFO] Starting Astro dev server...",
+    "[2025-08-27T23:17:46.252Z] [INFO] Dev server started successfully",
+    "[2025-08-27T23:17:46.252Z] [INFO] Launching headless browser...",
+    "[2025-08-27T23:17:48.690Z] [INFO] Capturing screenshots...",
+    "[2025-08-27T23:17:49.048Z] [INFO] Browser Console [debug]: [vite] connecting...",
+    "[2025-08-27T23:17:49.073Z] [INFO] Browser Console [debug]: [vite] connected.",
+    "[2025-08-27T23:17:50.054Z] [INFO] Screenshots captured successfully",
+    "[2025-08-27T23:17:50.055Z] [INFO] Testing page interactivity...",
+    "[2025-08-27T23:17:50.073Z] [INFO] Browser Console [debug]: [vite] connecting...",
+    "[2025-08-27T23:17:50.088Z] [INFO] Browser Console [debug]: [vite] connected.",
+    "[2025-08-27T23:17:50.616Z] [INFO] Found prompt toggle button, testing click...",
+    "[2025-08-27T23:17:51.244Z] [INFO] Prompt toggle test completed",
+    "[2025-08-27T23:17:51.250Z] [INFO] Found 5 patch series cards, testing selection...",
+    "[2025-08-27T23:17:51.839Z] [INFO] Patch selection test completed",
+    "[2025-08-27T23:17:51.839Z] [INFO] Generating debug report..."
+  ],
+  "summary": {
+    "total_logs": 15,
+    "errors": 0,
+    "warnings": 0
+  }
+}

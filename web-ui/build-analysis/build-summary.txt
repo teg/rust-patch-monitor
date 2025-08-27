@@ -1,0 +1,37 @@
+
+Rust Patch Monitor Web UI - Build Analysis
+=========================================
+Generated: 2025-08-27T22:43:36.102Z
+
+Build Status: ✅ SUCCESS
+
+Files & Assets:
+- Files: 2
+- Assets: 1  
+- Total Size: 0.05 MB
+
+Performance Metrics:
+- HTML Size: 36.64 KB
+- Script Tags: 1
+- CSS Links: 1
+- Has Islands: No
+
+Issues Found:
+- Errors: 0
+- Warnings: 1
+
+
+
+
+WARNINGS:
+⚠️  No favicon found
+
+
+
+
+Largest Files:
+📄 index.html (0.04MB)
+📄 _astro/index.Fyt7Ji8Z.css (0.01MB)
+📄 favicon.svg (0.00MB)
+
+🎉 Build completed successfully!

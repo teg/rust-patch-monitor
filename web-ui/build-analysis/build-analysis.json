@@ -1,0 +1,40 @@
+{
+  "timestamp": "2025-08-27T22:43:36.102Z",
+  "build_success": true,
+  "files": [
+    {
+      "path": "_astro/index.Fyt7Ji8Z.css",
+      "size": 15321,
+      "size_mb": "0.01",
+      "modified": "2025-08-27T22:43:36.054Z",
+      "type": "file"
+    },
+    {
+      "path": "index.html",
+      "size": 37609,
+      "size_mb": "0.04",
+      "modified": "2025-08-27T22:43:36.066Z",
+      "type": "file"
+    }
+  ],
+  "assets": [
+    {
+      "path": "favicon.svg",
+      "size": 749,
+      "size_mb": "0.00",
+      "modified": "2025-08-27T22:43:36.027Z",
+      "type": "asset"
+    }
+  ],
+  "errors": [],
+  "warnings": [
+    "No favicon found"
+  ],
+  "performance": {
+    "script_tags": 1,
+    "css_links": 1,
+    "html_size_kb": "36.64",
+    "total_size_mb": "0.05"
+  },
+  "recommendations": []
+}

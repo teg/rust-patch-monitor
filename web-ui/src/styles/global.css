@@ -1,1 +1,211 @@
 @import "tailwindcss";
+
+/* GitHub Modern Theme - Custom Styles */
+
+/* Smooth transitions for all interactive elements */
+* {
+  transition-property: color, background-color, border-color, box-shadow, transform;
+  transition-duration: 0.15s;
+  transition-timing-function: ease-out;
+}
+
+/* Body styling with GitHub font stack */
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Modern card styling */
+.github-card {
+  @apply bg-white border border-gray-300 rounded-xl shadow-sm;
+  transition: all 0.2s ease-out;
+  box-shadow: 0 1px 3px rgba(31,35,40,0.12), 0 8px 24px rgba(66,74,83,0.12);
+}
+
+.github-card:hover {
+  border-color: rgba(9, 105, 218, 0.2);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 7px rgba(31,35,40,0.15), 0 10px 24px rgba(66,74,83,0.15);
+}
+
+/* Status badge styles */
+.status-badge {
+  @apply inline-flex items-center px-3 py-1 rounded-full text-sm font-medium border;
+}
+
+.status-ready {
+  @apply bg-green-50 text-green-800 border-green-200;
+}
+
+.status-review {
+  @apply bg-blue-50 text-blue-800 border-blue-200;
+}
+
+.status-stalled {
+  @apply bg-red-50 text-red-800 border-red-200;
+}
+
+.status-strategic {
+  @apply bg-purple-50 text-purple-800 border-purple-200;
+}
+
+/* Engagement metrics styling */
+.engagement-metric {
+  @apply inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs;
+}
+
+.engagement-metric.signoff {
+  @apply bg-green-50 text-green-700;
+}
+
+.engagement-metric.ack {
+  @apply bg-blue-50 text-blue-700;
+}
+
+.engagement-metric.review {
+  @apply bg-orange-50 text-orange-700;
+}
+
+.engagement-metric.test {
+  @apply bg-gray-50 text-gray-700;
+}
+
+/* Modern button styling */
+.github-btn {
+  @apply inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium;
+  @apply border transition-all duration-200;
+}
+
+.github-btn:hover {
+  transform: translateY(-1px);
+}
+
+.github-btn-primary {
+  background-color: #0969da;
+  color: white;
+  border-color: #0969da;
+}
+
+.github-btn-primary:hover {
+  background-color: rgba(9, 105, 218, 0.9);
+}
+
+.github-btn-outline {
+  background-color: transparent;
+  color: #24292f;
+  border-color: #d0d7de;
+}
+
+.github-btn-outline:hover {
+  background-color: #f6f8fa;
+  border-color: rgba(9, 105, 218, 0.3);
+}
+
+/* Header improvements */
+.modern-header {
+  background: rgba(255, 255, 255, 0.95);
+  border-bottom: 1px solid #d0d7de;
+  backdrop-filter: blur(4px);
+}
+
+/* Sidebar card improvements */
+.patch-card {
+  background-color: white;
+  border: 1px solid #d0d7de;
+  border-radius: 12px;
+  padding: 16px;
+  cursor: pointer;
+  transition: all 0.2s ease-out;
+  box-shadow: 0 1px 3px rgba(31,35,40,0.12), 0 8px 24px rgba(66,74,83,0.12);
+}
+
+.patch-card:hover {
+  border-color: rgba(9, 105, 218, 0.2);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 7px rgba(31,35,40,0.15), 0 10px 24px rgba(66,74,83,0.15);
+}
+
+.patch-card.selected {
+  border-color: #0969da;
+  box-shadow: 0 0 0 2px rgba(9, 105, 218, 0.5);
+}
+
+/* Content panel styling */
+.content-panel {
+  background-color: white;
+  border: 1px solid #d0d7de;
+  border-radius: 12px;
+  transition: all 0.2s ease-out;
+  box-shadow: 0 1px 3px rgba(31,35,40,0.12), 0 8px 24px rgba(66,74,83,0.12);
+}
+
+/* Code highlighting */
+.code-block {
+  @apply bg-gray-100 rounded-lg p-4 text-sm font-mono;
+  @apply border border-gray-300;
+}
+
+/* Prose improvements */
+.prose-github {
+  max-width: none;
+  color: #24292f;
+  line-height: 1.6;
+}
+
+.prose-github h1, .prose-github h2, .prose-github h3 {
+  color: #24292f;
+  font-weight: 600;
+}
+
+.prose-github h1 {
+  font-size: 1.5rem;
+  margin-bottom: 1rem;
+  margin-top: 1.5rem;
+}
+
+.prose-github h1:first-child {
+  margin-top: 0;
+}
+
+.prose-github h2 {
+  font-size: 1.25rem;
+  margin-bottom: 0.75rem;
+  margin-top: 1.25rem;
+}
+
+.prose-github h2:first-child {
+  margin-top: 0;
+}
+
+.prose-github h3 {
+  font-size: 1.125rem;
+  margin-bottom: 0.5rem;
+  margin-top: 1rem;
+}
+
+.prose-github h3:first-child {
+  margin-top: 0;
+}
+
+.prose-github p {
+  margin-bottom: 1rem;
+  color: rgba(36, 41, 47, 0.8);
+}
+
+.prose-github strong {
+  font-weight: 600;
+  color: #24292f;
+}
+
+/* Loading states */
+.skeleton {
+  @apply animate-pulse bg-gray-300 rounded;
+}
+
+/* Focus styles */
+.focus-ring:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(9, 105, 218, 0.5);
+}

@@ -5,13 +5,22 @@
   "scripts": {
     "dev": "astro dev",
     "build": "astro build",
+    "build:verbose": "astro build --verbose",
+    "build:debug": "npm run build:verbose 2>&1 | tee build.log",
     "preview": "astro preview",
-    "astro": "astro"
+    "astro": "astro",
+    "debug": "node scripts/debug.js",
+    "screenshot": "node scripts/screenshot.js",
+    "test:visual": "node scripts/visual-test.js",
+    "analyze": "npm run build && node scripts/analyze-build.js"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.1.12",
     "astro": "^5.13.4",
     "daisyui": "^5.0.51",
     "tailwindcss": "^4.1.12"
+  },
+  "devDependencies": {
+    "puppeteer": "^23.11.1"
   }
 }
