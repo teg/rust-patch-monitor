@@ -1,0 +1,23 @@
+
+Rust Patch Monitor Web UI Debug Report
+=====================================
+Generated: 2025-08-27T23:17:51.839Z
+URL: http://localhost:4321/rust-patch-monitor/
+
+Summary:
+- Total log entries: 15
+- Errors: 0
+- Warnings: 0
+
+Screenshots captured:
+- full-page.png
+- desktop-viewport.png
+- tablet-viewport.png
+- mobile-viewport.png
+- prompt-expanded.png
+- patch-selected.png
+
+Full logs available in: debug-report.json
+Screenshots available in: screenshots/
+
+✅ No errors detected
