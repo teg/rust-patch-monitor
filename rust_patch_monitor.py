@@ -649,7 +649,7 @@ def analyze_bulk(days, max_series, output_dir, claude_key, no_comments, summary_
 
     import os
     from pathlib import Path
-    
+
     client = PatchworkClient()
     analyzer = ClaudeAnalyzer(claude_key)
 
@@ -664,22 +664,22 @@ def analyze_bulk(days, max_series, output_dir, claude_key, no_comments, summary_
         # Sort by date (newest first) and limit series to analyze
         series_list.sort(key=lambda x: x.date, reverse=True)
         series_to_analyze = series_list[:max_series]
-        
+
         click.echo(f"Found {len(series_list)} recent series, analyzing top {len(series_to_analyze)}")
-        
+
         # Create output directory
         output_path = Path(output_dir)
         timestamp_dir = output_path / datetime.now().strftime("%Y-%m-%d")
         timestamp_dir.mkdir(parents=True, exist_ok=True)
-        
+
         # Track results for summary and web export
         analysis_results = []
         failed_analyses = []
-        
+
         # Process each series
         for i, series in enumerate(series_to_analyze, 1):
             click.echo(f"\n[{i}/{len(series_to_analyze)}] Analyzing: {series.name}")
-            
+
             try:
                 # Fetch patches
                 click.echo("  Fetching patches...")
@@ -691,16 +691,16 @@ def analyze_bulk(days, max_series, output_dir, claude_key, no_comments, summary_
                     except Exception as e:
                         click.echo(f"    Warning: Failed to fetch patch {patch_info['id']}: {e}")
                         continue
-                
+
                 if not patches:
                     click.echo("  Error: No patches could be fetched")
                     failed_analyses.append((series, "No patches available"))
                     continue
-                
+
                 # Analyze with Claude
                 include_comments = not no_comments
                 click.echo(f"  Analyzing with Claude ({len(patches)} patches)...")
-                
+
                 analysis = analyzer.analyze_patchset(
                     series,
                     patches,
@@ -708,7 +708,7 @@ def analyze_bulk(days, max_series, output_dir, claude_key, no_comments, summary_
                     include_comments=include_comments,
                     max_patches=max_patches,
                 )
-                
+
                 # Save individual analysis
                 filename = f"series-{series.id}.md"
                 filepath = timestamp_dir / filename
@@ -722,55 +722,52 @@ def analyze_bulk(days, max_series, output_dir, claude_key, no_comments, summary_
                     f.write(f"**Patchwork URL**: {series.web_url}\n\n")
                     f.write("---\n\n")
                     f.write(analysis)
-                
+
                 # Store for summary and web export
-                analysis_results.append({
-                    'series': series,
-                    'analysis': analysis,
-                    'patches': patches,
-                    'filepath': str(filepath)
-                })
-                
+                analysis_results.append(
+                    {"series": series, "analysis": analysis, "patches": patches, "filepath": str(filepath)}
+                )
+
                 click.echo(f"  ✓ Saved to {filepath}")
-                
+
             except Exception as e:
                 click.echo(f"  ✗ Failed: {e}")
                 failed_analyses.append((series, str(e)))
                 continue
-        
+
         # Generate summary report if requested
         if summary_report:
             click.echo(f"\nGenerating summary report...")
             summary_path = timestamp_dir / "summary.md"
-            
+
             with open(summary_path, "w") as f:
                 f.write(f"# Rust for Linux Patch Analysis Summary\n\n")
                 f.write(f"**Generated**: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
                 f.write(f"**Period**: Last {days} days\n")
                 f.write(f"**Analyzed**: {len(analysis_results)}/{len(series_to_analyze)} series\n\n")
-                
+
                 if failed_analyses:
                     f.write(f"## Failed Analyses ({len(failed_analyses)})\n\n")
                     for series, error in failed_analyses:
                         f.write(f"- **{series.name}**: {error}\n")
                     f.write("\n")
-                
+
                 f.write(f"## Successful Analyses ({len(analysis_results)})\n\n")
                 for result in analysis_results:
-                    series = result['series']
+                    series = result["series"]
                     f.write(f"### {series.name}\n\n")
                     f.write(f"- **Author**: {series.submitter.get('name', 'Unknown')}\n")
                     f.write(f"- **Date**: {series.date.strftime('%Y-%m-%d')}\n")
                     f.write(f"- **Patches**: {series.total}\n")
                     f.write(f"- **Report**: [{result['filepath']}]({os.path.basename(result['filepath'])})\n")
                     f.write(f"- **Patchwork**: {series.web_url}\n\n")
-            
+
             click.echo(f"✓ Summary saved to {summary_path}")
-        
+
         # Auto-generate web UI data
         click.echo(f"\nGenerating web UI data...")
         web_data_path = Path("web-ui/src/data/patches.json")
-        
+
         # Create enhanced export data with analysis summaries
         export_data = {
             "metadata": {
@@ -779,20 +776,20 @@ def analyze_bulk(days, max_series, output_dir, claude_key, no_comments, summary_
                 "days_back": days,
                 "include_applied": False,
                 "total_series": len(analysis_results),
-                "analysis_method": "claude_bulk"
+                "analysis_method": "claude_bulk",
             },
-            "patch_series": []
+            "patch_series": [],
         }
-        
+
         for result in analysis_results:
-            series = result['series']
-            patches = result['patches']
-            
+            series = result["series"]
+            patches = result["patches"]
+
             # Get engagement analysis
             engagement = analyzer._analyze_engagement(series, patches)
-            
+
             # Extract key insights from Claude analysis (simplified)
-            analysis_text = result['analysis']
+            analysis_text = result["analysis"]
             status = "Under Review"  # Default
             if "ready" in analysis_text.lower():
                 status = "Ready"
@@ -800,46 +797,49 @@ def analyze_bulk(days, max_series, output_dir, claude_key, no_comments, summary_
                 status = "Stalled"
             elif "strategic" in analysis_text.lower():
                 status = "Strategic Development"
-            
+
             series_data = {
                 "id": series.id,
                 "name": series.name,
                 "date": series.date.isoformat(),
                 "submitter": {
                     "name": series.submitter.get("name", "Unknown") if series.submitter else "Unknown",
-                    "email": series.submitter.get("email", "") if series.submitter else ""
+                    "email": series.submitter.get("email", "") if series.submitter else "",
                 },
                 "total_patches": series.total,
                 "web_url": series.web_url,
                 "engagement": {
                     "version": engagement["version"],
-                    "days_since_posting": engagement["days_since_posting"], 
+                    "days_since_posting": engagement["days_since_posting"],
                     "endorsements": {
                         "signed_off_by": len(engagement["endorsements"]["signed_off_by"]),
                         "acked_by": len(engagement["endorsements"]["acked_by"]),
                         "reviewed_by": len(engagement["endorsements"]["reviewed_by"]),
-                        "tested_by": len(engagement["endorsements"]["tested_by"])
-                    }
+                        "tested_by": len(engagement["endorsements"]["tested_by"]),
+                    },
                 },
                 "analysis": {
                     "status": status,
                     "significance": "Generated by Claude analysis",
                     "summary": analysis_text,
                     "technical_context": "See detailed analysis report",
-                    "patches": [{"id": i+1, "name": f"Patch {i+1}", "description": "See full report"} for i in range(min(3, len(patches)))],
-                    "issues": []
-                }
+                    "patches": [
+                        {"id": i + 1, "name": f"Patch {i+1}", "description": "See full report"}
+                        for i in range(min(3, len(patches)))
+                    ],
+                    "issues": [],
+                },
             }
             export_data["patch_series"].append(series_data)
-        
+
         # Ensure web-ui directory exists
         web_data_path.parent.mkdir(parents=True, exist_ok=True)
-        
+
         with open(web_data_path, "w") as f:
             json.dump(export_data, f, indent=2, default=str)
-            
+
         click.echo(f"✓ Web UI data saved to {web_data_path}")
-        
+
         # Final summary
         click.echo(f"\n🎉 Bulk analysis complete!")
         click.echo(f"✓ Analyzed: {len(analysis_results)}/{len(series_to_analyze)} series")
@@ -858,15 +858,15 @@ def analyze_bulk(days, max_series, output_dir, claude_key, no_comments, summary_
 def export_json(days, include_applied, output):
     """Export patch data as JSON for web UI consumption"""
     client = PatchworkClient()
-    
+
     try:
         project_id = client.get_rust_for_linux_project_id()
         series_list = client.get_recent_series(project_id, days, include_applied)
-        
+
         if not series_list:
             click.echo("No recent patch series found")
             return
-            
+
         # Convert series data to JSON-serializable format
         export_data = {
             "metadata": {
@@ -874,13 +874,13 @@ def export_json(days, include_applied, output):
                 "project": "rust-for-linux",
                 "days_back": days,
                 "include_applied": include_applied,
-                "total_series": len(series_list)
+                "total_series": len(series_list),
             },
-            "patch_series": []
+            "patch_series": [],
         }
-        
+
         click.echo(f"Exporting {len(series_list)} patch series...")
-        
+
         for series in series_list:
             # Get engagement analysis for each series
             analyzer = ClaudeAnalyzer("dummy-key")  # Just for analysis function
@@ -893,44 +893,44 @@ def export_json(days, include_applied, output):
                         patches.append(patch)
                     except:
                         continue  # Skip failed patches
-                
+
                 engagement = analyzer._analyze_engagement(series, patches)
             except:
                 engagement = {
                     "version": 1,
                     "days_since_posting": 0,
-                    "endorsements": {"signed_off_by": [], "acked_by": [], "reviewed_by": [], "tested_by": []}
+                    "endorsements": {"signed_off_by": [], "acked_by": [], "reviewed_by": [], "tested_by": []},
                 }
-            
+
             series_data = {
                 "id": series.id,
                 "name": series.name,
                 "date": series.date.isoformat(),
                 "submitter": {
                     "name": series.submitter.get("name", "Unknown") if series.submitter else "Unknown",
-                    "email": series.submitter.get("email", "") if series.submitter else ""
+                    "email": series.submitter.get("email", "") if series.submitter else "",
                 },
                 "total_patches": series.total,
                 "web_url": series.web_url,
                 "engagement": {
                     "version": engagement["version"],
-                    "days_since_posting": engagement["days_since_posting"], 
+                    "days_since_posting": engagement["days_since_posting"],
                     "endorsements": {
                         "signed_off_by": len(engagement["endorsements"]["signed_off_by"]),
                         "acked_by": len(engagement["endorsements"]["acked_by"]),
                         "reviewed_by": len(engagement["endorsements"]["reviewed_by"]),
-                        "tested_by": len(engagement["endorsements"]["tested_by"])
-                    }
-                }
+                        "tested_by": len(engagement["endorsements"]["tested_by"]),
+                    },
+                },
             }
             export_data["patch_series"].append(series_data)
-        
+
         # Write to JSON file
         with open(output, "w") as f:
             json.dump(export_data, f, indent=2, default=str)
-            
+
         click.echo(f"Data exported to {output}")
-        
+
     except Exception as e:
         click.echo(f"Error: {e}", err=True)
 
