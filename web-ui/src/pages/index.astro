@@ -31,7 +31,7 @@ const recentSeries = patch_series?.filter(series => (series.engagement?.days_sin
 <html lang="en" data-theme="rustlinux">
 	<head>
 		<meta charset="utf-8" />
-		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+		<link rel="icon" type="image/svg+xml" href={`${import.meta.env.BASE_URL}favicon.svg`} />
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
 		<meta name="generator" content={Astro.generator} />
 		<title>Rust for Linux Patch Monitor</title>
