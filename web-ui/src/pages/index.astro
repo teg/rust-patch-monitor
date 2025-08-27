@@ -1,9 +1,13 @@
 ---
 import '../styles/global.css';
-// Try to import real data first, fall back to sample data
+// Try to import real data first, fall back to sample data if empty or missing
 let patchData;
 try {
   patchData = await import('../data/patches.json');
+  // If patches.json has no actual data (placeholder), use sample data instead
+  if (!patchData.patch_series || patchData.patch_series.length === 0) {
+    patchData = await import('../data/sample-patches.json');
+  }
 } catch (e) {
   // Fall back to sample data if real data doesn't exist
   patchData = await import('../data/sample-patches.json');
@@ -256,10 +260,98 @@ const recentSeries = patch_series?.filter(series => (series.engagement?.days_sin
 			</div>
 		</main>
 
-		<!-- Footer -->
-		<footer class="footer footer-center p-2 bg-base-200 text-base-content text-xs">
-			<div>
-				<p>Generated from rust-for-linux project • Data refreshed every 6 hours</p>
+
+		<!-- About Footer -->
+		<footer class="bg-base-200 text-base-content border-t border-base-300">
+			<div class="max-w-7xl mx-auto p-6">
+				<div class="flex items-center gap-3 mb-6">
+					<span class="text-3xl">🦀</span>
+					<h3 class="text-xl font-bold">About Rust Patch Monitor</h3>
+				</div>
+
+				<div class="grid gap-6 md:grid-cols-3">
+					<!-- Analysis Metrics -->
+					<div class="card bg-base-300">
+						<div class="card-body p-4">
+							<h4 class="font-semibold text-base-content mb-3 flex items-center gap-2">
+								📊 Analysis Metrics
+							</h4>
+							<div class="text-sm space-y-2">
+								<div class="flex justify-between">
+									<span>Input Tokens:</span>
+									<span class="font-mono">
+										{metadata?.token_usage?.total_input_tokens?.toLocaleString() || 'N/A'}
+									</span>
+								</div>
+								<div class="flex justify-between">
+									<span>Output Tokens:</span>
+									<span class="font-mono">
+										{metadata?.token_usage?.total_output_tokens?.toLocaleString() || 'N/A'}
+									</span>
+								</div>
+								<div class="flex justify-between">
+									<span>Model:</span>
+									<span class="font-mono text-xs">
+										{metadata?.token_usage?.model || 'Claude Sonnet 4'}
+									</span>
+								</div>
+								<div class="flex justify-between">
+									<span>Analyses:</span>
+									<span class="font-mono">
+										{metadata?.token_usage?.analysis_count || patch_series?.length || 0}
+									</span>
+								</div>
+							</div>
+						</div>
+					</div>
+
+					<!-- Data Source -->
+					<div class="card bg-base-300">
+						<div class="card-body p-4">
+							<h4 class="font-semibold text-base-content mb-3 flex items-center gap-2">
+								🔍 Data Source
+							</h4>
+							<div class="text-sm space-y-2">
+								<div class="flex justify-between">
+									<span>Project:</span>
+									<span class="font-mono">{metadata?.project || 'rust-for-linux'}</span>
+								</div>
+								<div class="flex justify-between">
+									<span>Period:</span>
+									<span>Last {metadata?.days_back || 14} days</span>
+								</div>
+								<div class="flex justify-between">
+									<span>Series:</span>
+									<span>{metadata?.total_series || patch_series?.length || 0} patch series</span>
+								</div>
+								<div class="flex justify-between">
+									<span>Method:</span>
+									<span>Patchwork API + Claude AI</span>
+								</div>
+							</div>
+						</div>
+					</div>
+
+					<!-- How It Works -->
+					<div class="card bg-base-300">
+						<div class="card-body p-4">
+							<h4 class="font-semibold text-base-content mb-3 flex items-center gap-2">
+								ℹ️ How It Works
+							</h4>
+							<div class="text-sm space-y-2">
+								<p>• Fetches latest patches from Patchwork</p>
+								<p>• Analyzes with Claude AI for insights</p>
+								<p>• Generates interactive dashboard</p>
+								<p>• Updates manually via GitHub Actions</p>
+							</div>
+						</div>
+					</div>
+				</div>
+
+				<!-- Simple footer info -->
+				<div class="text-center text-xs opacity-70 mt-6 pt-4 border-t border-base-300">
+					<p>Generated from rust-for-linux project • Data refreshed manually</p>
+				</div>
 			</div>
 		</footer>
 
