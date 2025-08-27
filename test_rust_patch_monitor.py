@@ -45,9 +45,9 @@ class TestEngagementAnalysis:
         # Create mock patch with various endorsements
         patch_content = """
         Subject: rust: add new feature
-        
+
         This patch adds important functionality.
-        
+
         Signed-off-by: Alice Author <alice@example.com>
         Reviewed-by: Bob Reviewer <bob@kernel.org>
         Acked-by: Carol Maintainer <carol@kernel.org>

@@ -378,10 +378,18 @@ class ClaudeAnalyzer:
       <days_since_posting>{engagement_data['days_since_posting']}</days_since_posting>
     </version_info>
     <endorsements>
-      <signed_off_by count="{len(engagement_data['endorsements']['signed_off_by'])}">{', '.join(engagement_data['endorsements']['signed_off_by'][:5])}</signed_off_by>
-      <acked_by count="{len(engagement_data['endorsements']['acked_by'])}">{', '.join(engagement_data['endorsements']['acked_by'][:5])}</acked_by>
-      <reviewed_by count="{len(engagement_data['endorsements']['reviewed_by'])}">{', '.join(engagement_data['endorsements']['reviewed_by'][:5])}</reviewed_by>
-      <tested_by count="{len(engagement_data['endorsements']['tested_by'])}">{', '.join(engagement_data['endorsements']['tested_by'][:5])}</tested_by>
+      <signed_off_by count="{len(engagement_data['endorsements']['signed_off_by'])}">{
+          ', '.join(engagement_data['endorsements']['signed_off_by'][:5])
+      }</signed_off_by>
+      <acked_by count="{len(engagement_data['endorsements']['acked_by'])}">{
+          ', '.join(engagement_data['endorsements']['acked_by'][:5])
+      }</acked_by>
+      <reviewed_by count="{len(engagement_data['endorsements']['reviewed_by'])}">{
+          ', '.join(engagement_data['endorsements']['reviewed_by'][:5])
+      }</reviewed_by>
+      <tested_by count="{len(engagement_data['endorsements']['tested_by'])}">{
+          ', '.join(engagement_data['endorsements']['tested_by'][:5])
+      }</tested_by>
     </endorsements>
     <activity_indicators>
       <comment_count>{total_comments}</comment_count>
@@ -399,9 +407,9 @@ class ClaudeAnalyzer:
     <analyzed_patches>{min(len(patches), max_patches)}</analyzed_patches>
     <patchwork_url>{series.web_url}</patchwork_url>
   </metadata>
-  
+
 {engagement_xml}
-  
+
   <patches>
 {chr(10).join(patches_xml)}
   </patches>
@@ -414,40 +422,43 @@ class ClaudeAnalyzer:
 
 <analysis_request>
   <output_format>markdown</output_format>
-  <target_audience>Director of Engineering familiar with Linux kernel development and Rust-for-Linux strategy, but potentially unfamiliar with specific subsystems</target_audience>
-  
-  <role>You are a technical adviser providing succinct executive briefings. The director needs to understand what matters, why it matters, and be able to explain it to stakeholders. Assume deep kernel knowledge but explain subsystem-specific details.</role>
-  
+  <target_audience>Director of Engineering familiar with Linux kernel development and Rust-for-Linux strategy,
+  but potentially unfamiliar with specific subsystems</target_audience>
+
+  <role>You are a technical adviser providing succinct executive briefings. The director needs to understand
+  what matters, why it matters, and be able to explain it to stakeholders. Assume deep kernel knowledge but
+  explain subsystem-specific details.</role>
+
   <engagement_guidance>
     <status_indicators>
       - High version (v5+) + recent + many acks = "Ready for merge"
-      - Recent high version + endorsements + minimal discussion = "Mature/stable" 
+      - Recent high version + endorsements + minimal discussion = "Mature/stable"
       - Old posting (30+ days) + no acks + no activity = "Stalled"
       - Recent v1 + active discussion = "Early development"
       - Quality concerns in comments = "Needs attention"
     </status_indicators>
   </engagement_guidance>
-  
+
   <format_requirements>
     <structure>
       # Executive Brief: {series.name}
-      
+
       **Status**: [Ready for merge | Under review | Stalled | Quality concerns | Strategic development]
       **Significance**: [Major advance | Incremental improvement | Bug fix | Infrastructure | Experiment]
-      
+
       ## What & Why
       [2-3 sentences: what this does and why it matters to Rust-for-Linux]
-      
+
       ## Technical Context (expand if subsystem explanation needed)
       [Subsystem-specific details, architecture differences, interaction with existing C code]
-      
-      ## Issues & Conflicts (only if present)  
+
+      ## Issues & Conflicts (only if present)
       [Problems requiring director attention: quality concerns, community conflicts, blocking issues]
-      
+
       ## Stakeholder Summary (if strategically significant)
       [Key talking points for external discussions]
     </structure>
-    
+
     <guidelines>
       - Skip sections that don't contain meaningful information
       - Focus on what requires director attention or stakeholder communication
