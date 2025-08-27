@@ -109,6 +109,44 @@ Analyze more patches from a series:
 ./rust_patch_monitor.py analyze --max-patches 10
 ```
 
+### Bulk Analysis (New!)
+
+Generate comprehensive reports for multiple recent patch series automatically:
+
+```bash
+# Analyze recent PRs (last 14 days) - recommended approach
+make reports
+
+# Quick weekly analysis
+make reports-weekly
+
+# Custom time period
+make reports-custom DAYS=30
+
+# Faster analysis without community comments
+make reports-fast
+```
+
+Or use the CLI directly:
+```bash
+# Bulk analyze last 14 days with summary report and web UI update
+./rust_patch_monitor.py analyze-bulk --summary-report
+
+# Analyze last 7 days, maximum 5 series, no comments (faster)
+./rust_patch_monitor.py analyze-bulk --days 7 --max-series 5 --no-comments
+
+# Custom output directory
+./rust_patch_monitor.py analyze-bulk --output-dir my-reports --summary-report
+```
+
+**Bulk analysis features:**
+- **Non-interactive**: No manual selection required
+- **Progress tracking**: Shows analysis progress and estimated completion
+- **Error resilience**: Continues even if individual analyses fail
+- **Structured output**: Individual reports + optional summary
+- **Web UI integration**: Automatically updates dashboard data
+- **Smart defaults**: Analyzes most recent, high-priority patch series
+
 ### Debug Recent Patches
 
 See what recent patches look like to understand naming patterns:
@@ -145,13 +183,20 @@ The tool consists of:
 - Historical data availability varies by Patchwork instance
 - Large patchsets are truncated for API token limits
 
+## Web UI
+
+A modern web interface for viewing patch analysis reports is in development. See [docs/WEB_UI_ARCHITECTURE.md](docs/WEB_UI_ARCHITECTURE.md) for technical details.
+
+**Technology Stack**: Astro + Tailwind CSS + Observable Plot
+**Features**: Interactive dashboards, engagement metrics, responsive design
+**Deployment**: Static site generation for fast, maintenance-free hosting
+
 ## Future Enhancements
 
 - Real-time monitoring with notifications
 - Integration with Git repositories
 - Historical trend analysis
 - Multi-project support beyond kernel
-- Web interface for easier browsing
 
 ## Development
 
@@ -166,6 +211,12 @@ make lint
 
 # Run all checks
 make check
+
+# Generate reports for recent PRs
+make reports
+
+# Generate weekly reports  
+make reports-weekly
 ```
 
 ### Development Workflow
