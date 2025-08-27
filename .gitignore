@@ -192,8 +192,7 @@ dist/
 .env.test.local
 .env.production.local
 
-# Generated web UI data
-web-ui/src/data/patches.json
+# Generated web UI data (keeping placeholder file)
 
 # Build artifacts
 build/
