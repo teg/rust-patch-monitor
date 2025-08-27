@@ -1,9 +1,13 @@
 ---
 import '../styles/global.css';
-// Try to import real data first, fall back to sample data
+// Try to import real data first, fall back to sample data if empty or missing
 let patchData;
 try {
   patchData = await import('../data/patches.json');
+  // If patches.json has no actual data (placeholder), use sample data instead
+  if (!patchData.patch_series || patchData.patch_series.length === 0) {
+    patchData = await import('../data/sample-patches.json');
+  }
 } catch (e) {
   // Fall back to sample data if real data doesn't exist
   patchData = await import('../data/sample-patches.json');
