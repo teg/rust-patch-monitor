@@ -44,7 +44,7 @@ class TestGoldenMasters:
     <analyzed_patches>1</analyzed_patches>
     <patchwork_url>https://patchwork.kernel.org/project/rust-for-linux/list/?series=123</patchwork_url>
   </metadata>
-  
+
   <engagement_analysis>
     <version_info>
       <current_version>3</current_version>
@@ -61,7 +61,7 @@ class TestGoldenMasters:
       <days_since_last_activity>0</days_since_last_activity>
     </activity_indicators>
   </engagement_analysis>
-  
+
   <patches>
     <patch id="1" name="rust: kernel: add device abstraction">
       <content>
