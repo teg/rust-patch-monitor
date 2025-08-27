@@ -11,15 +11,16 @@ try {
 
 const { metadata, patch_series } = patchData;
 
-// Calculate summary statistics
-const totalEndorsements = patch_series.reduce((sum, series) => {
-  const endorsements = series.engagement.endorsements;
-  return sum + endorsements.signed_off_by + endorsements.acked_by + endorsements.reviewed_by + endorsements.tested_by;
-}, 0);
+// Calculate summary statistics with safety checks
+const totalEndorsements = patch_series?.reduce((sum, series) => {
+  const endorsements = series.engagement?.endorsements;
+  if (!endorsements) return sum;
+  return sum + (endorsements.signed_off_by || 0) + (endorsements.acked_by || 0) + (endorsements.reviewed_by || 0) + (endorsements.tested_by || 0);
+}, 0) || 0;
 
-const avgVersion = Math.round(patch_series.reduce((sum, series) => sum + series.engagement.version, 0) / patch_series.length * 10) / 10;
+const avgVersion = patch_series?.length ? Math.round(patch_series.reduce((sum, series) => sum + (series.engagement?.version || 1), 0) / patch_series.length * 10) / 10 : 1;
 
-const recentSeries = patch_series.filter(series => series.engagement.days_since_posting <= 14).length;
+const recentSeries = patch_series?.filter(series => (series.engagement?.days_since_posting || 0) <= 14).length || 0;
 ---
 
 <!doctype html>
@@ -40,7 +41,7 @@ const recentSeries = patch_series.filter(series => series.engagement.days_since_
 			</div>
 			<div class="flex-none">
 				<div class="text-sm opacity-75">
-					Last updated: {new Date(metadata.generated_at).toLocaleString()}
+					Last updated: {new Date(metadata?.generated_at || new Date()).toLocaleString()}
 				</div>
 			</div>
 		</header>
@@ -100,7 +101,7 @@ const recentSeries = patch_series.filter(series => series.engagement.days_since_
 						</div>
 
 						<ul class="space-y-2" role="listbox">
-							{patch_series.map((series, index) => (
+							{(patch_series || []).map((series, index) => (
 								<li 
 									class={`patch-series-card card card-compact bg-base-200 hover:bg-base-300 transition border cursor-pointer min-h-[84px] ${index === 0 ? 'border-primary' : 'border-base-300'}`}
 									data-series-id={series.id}
@@ -110,33 +111,33 @@ const recentSeries = patch_series.filter(series => series.engagement.days_since_
 									<div class="card-body gap-2 p-3">
 										<div class="flex items-start justify-between">
 											<h3 class="font-semibold leading-snug line-clamp-2 text-[15px]">{series.name}</h3>
-											<span class="badge badge-outline badge-sm flex-shrink-0 ml-2">v{series.engagement.version}</span>
+											<span class="badge badge-outline badge-sm flex-shrink-0 ml-2">v{series.engagement?.version || 1}</span>
 										</div>
 
 										<div class="flex flex-wrap items-center gap-2 text-sm text-base-content/70">
-											<span class="badge badge-sm badge-ghost">{series.analysis.status}</span>
+											<span class="badge badge-sm badge-ghost">{series.analysis?.status || 'Unknown'}</span>
 											<span class="inline-flex items-center gap-1">
 												<svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
 													<path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd"></path>
 												</svg>
-												{series.submitter.name}
+												{series.submitter?.name || 'Unknown'}
 											</span>
-											<span aria-label="Age">{series.engagement.days_since_posting}d</span>
-											<span aria-label="Patches">{series.total_patches} patch{series.total_patches > 1 ? 'es' : ''}</span>
+											<span aria-label="Age">{series.engagement?.days_since_posting || 0}d</span>
+											<span aria-label="Patches">{series.total_patches || 0} patch{(series.total_patches || 0) > 1 ? 'es' : ''}</span>
 										</div>
 
 										<div class="flex gap-2">
-											{series.engagement.endorsements.signed_off_by > 0 && (
-												<span class="badge badge-sm badge-success">✓ {series.engagement.endorsements.signed_off_by}</span>
+											{(series.engagement?.endorsements?.signed_off_by || 0) > 0 && (
+												<span class="badge badge-sm badge-success">✓ {series.engagement?.endorsements?.signed_off_by || 0}</span>
 											)}
-											{series.engagement.endorsements.acked_by > 0 && (
-												<span class="badge badge-sm badge-info">↪ {series.engagement.endorsements.acked_by}</span>
+											{(series.engagement?.endorsements?.acked_by || 0) > 0 && (
+												<span class="badge badge-sm badge-info">↪ {series.engagement?.endorsements?.acked_by || 0}</span>
 											)}
-											{series.engagement.endorsements.reviewed_by > 0 && (
-												<span class="badge badge-sm badge-warning">📝 {series.engagement.endorsements.reviewed_by}</span>
+											{(series.engagement?.endorsements?.reviewed_by || 0) > 0 && (
+												<span class="badge badge-sm badge-warning">📝 {series.engagement?.endorsements?.reviewed_by || 0}</span>
 											)}
-											{series.engagement.endorsements.tested_by > 0 && (
-												<span class="badge badge-sm badge-ghost">🧪 {series.engagement.endorsements.tested_by}</span>
+											{(series.engagement?.endorsements?.tested_by || 0) > 0 && (
+												<span class="badge badge-sm badge-ghost">🧪 {series.engagement?.endorsements?.tested_by || 0}</span>
 											)}
 										</div>
 									</div>
@@ -151,15 +152,15 @@ const recentSeries = patch_series.filter(series => series.engagement.days_since_
 					<!-- Sticky Header -->
 					<header class="sticky top-0 z-10 bg-base-200/90 backdrop-blur border-b border-base-300 p-4 flex items-center justify-between">
 						<div class="flex-1 min-w-0">
-							<h2 class="text-xl font-semibold truncate" id="analysis-title">{patch_series[0].name}</h2>
+							<h2 class="text-xl font-semibold truncate" id="analysis-title">{patch_series?.[0]?.name || 'No Data Available'}</h2>
 							<p class="text-sm text-base-content/70" id="analysis-subtitle">
-								By <span id="analysis-author">{patch_series[0].submitter.name}</span> • 
-								<span id="analysis-date">{new Date(patch_series[0].date).toLocaleDateString()}</span> • 
-								<span id="analysis-patches">{patch_series[0].total_patches} patches</span>
+								By <span id="analysis-author">{patch_series?.[0]?.submitter?.name || 'Unknown'}</span> • 
+								<span id="analysis-date">{patch_series?.[0]?.date ? new Date(patch_series[0].date).toLocaleDateString() : 'Unknown'}</span> • 
+								<span id="analysis-patches">{patch_series?.[0]?.total_patches || 0} patches</span>
 							</p>
 						</div>
 						<div class="flex gap-2 flex-shrink-0">
-							<a href={patch_series[0].web_url} target="_blank" rel="noopener" class="btn btn-sm btn-outline" id="patchwork-link">
+							<a href={patch_series?.[0]?.web_url || '#'} target="_blank" rel="noopener" class="btn btn-sm btn-outline" id="patchwork-link">
 								View on Patchwork
 								<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="inline-block w-4 h-4 stroke-current ml-1">
 									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path>
@@ -189,9 +190,9 @@ const recentSeries = patch_series.filter(series => series.engagement.days_since_
 
 						<!-- Status Badge and Metadata -->
 						<div class="flex items-center gap-2 mb-4">
-							<div class="badge badge-lg" id="analysis-status-badge">{patch_series[0].analysis.status}</div>
-							<div class="badge badge-primary">v<span id="analysis-version">{patch_series[0].engagement.version}</span></div>
-							<div class="badge badge-outline"><span id="analysis-days">{patch_series[0].engagement.days_since_posting}</span>d</div>
+							<div class="badge badge-lg" id="analysis-status-badge">{patch_series?.[0]?.analysis?.status || 'No Data'}</div>
+							<div class="badge badge-primary">v<span id="analysis-version">{patch_series?.[0]?.engagement?.version || 1}</span></div>
+							<div class="badge badge-outline"><span id="analysis-days">{patch_series?.[0]?.engagement?.days_since_posting || 0}</span>d</div>
 						</div>
 
 						<div class="space-y-6">
@@ -213,37 +214,37 @@ const recentSeries = patch_series.filter(series => series.engagement.days_since_
 									<div class="flex flex-wrap gap-3 text-sm" id="engagement-metrics">
 										<div class="flex items-center gap-1" id="signoffs-metric">
 											<span>✏️</span>
-											<span id="signoffs-count">{patch_series[0].engagement.endorsements.signed_off_by}</span>
+											<span id="signoffs-count">{patch_series?.[0]?.engagement?.endorsements?.signed_off_by || 0}</span>
 											<span class="text-base-content/70">Sign-offs</span>
 										</div>
 										<div class="flex items-center gap-1" id="acks-metric">
 											<span>✅</span>
-											<span id="acks-count">{patch_series[0].engagement.endorsements.acked_by}</span>
+											<span id="acks-count">{patch_series?.[0]?.engagement?.endorsements?.acked_by || 0}</span>
 											<span class="text-base-content/70">Acked-by</span>
 										</div>
 										<div class="flex items-center gap-1" id="reviews-metric">
 											<span>👀</span>
-											<span id="reviews-count">{patch_series[0].engagement.endorsements.reviewed_by}</span>
+											<span id="reviews-count">{patch_series?.[0]?.engagement?.endorsements?.reviewed_by || 0}</span>
 											<span class="text-base-content/70">Reviews</span>
 										</div>
 										<div class="flex items-center gap-1" id="tests-metric">
 											<span>🧪</span>
-											<span id="tests-count">{patch_series[0].engagement.endorsements.tested_by}</span>
+											<span id="tests-count">{patch_series?.[0]?.engagement?.endorsements?.tested_by || 0}</span>
 											<span class="text-base-content/70">Tests</span>
 										</div>
 									</div>
 									<div class="text-xs text-base-content/60 mt-2">
-										<span id="activity-age">{patch_series[0].engagement.days_since_posting} days since posting</span>
+										<span id="activity-age">{patch_series?.[0]?.engagement?.days_since_posting || 0} days since posting</span>
 									</div>
 								</div>
 							</div>
 
 							<!-- Issues (if any) -->
-							<div class="card bg-base-300" id="issues-card" style={patch_series[0].analysis.issues.length === 0 ? 'display: none' : ''}>
+							<div class="card bg-base-300" id="issues-card" style={(patch_series?.[0]?.analysis?.issues?.length || 0) === 0 ? 'display: none' : ''}>  
 								<div class="card-body p-4">
 									<h3 class="font-semibold text-base-content mb-3">⚠️ Issues & Concerns</h3>
 									<div class="space-y-1" id="issues-list">
-										{patch_series[0].analysis.issues.map((issue) => (
+										{(patch_series?.[0]?.analysis?.issues || []).map((issue) => (
 											<div class="text-sm text-warning">• {issue}</div>
 										))}
 									</div>
@@ -270,7 +271,7 @@ const recentSeries = patch_series.filter(series => series.engagement.days_since_
 				const sortSelect = document.getElementById('sort-select');
 				const statusCheckboxes = document.querySelectorAll('[data-status]');
 				let selectedIndex = 0;
-				let filteredSeries = [...patch_series];
+				let filteredSeries = [...(patch_series || [])];
 
 				// Load URL parameters on page load
 				const urlParams = new URLSearchParams(window.location.search);
@@ -312,27 +313,27 @@ const recentSeries = patch_series.filter(series => series.engagement.days_since_
 
 				// Filter and sort series
 				function applyFiltersAndSort() {
-					let filtered = [...patch_series];
+					let filtered = [...(patch_series || [])];
 					
 					// Apply status filter
 					const selectedStatuses = Array.from(statusCheckboxes)
 						.filter(cb => cb.checked)
 						.map(cb => cb.dataset.status);
 					if (selectedStatuses.length > 0) {
-						filtered = filtered.filter(series => selectedStatuses.includes(series.analysis.status));
+						filtered = filtered.filter(series => selectedStatuses.includes(series.analysis?.status || 'Unknown'));
 					}
 					
 					// Apply sorting
 					switch (sortSelect.value) {
 						case 'engagement':
 							filtered.sort((a, b) => {
-								const aTotal = a.engagement.endorsements.signed_off_by + a.engagement.endorsements.acked_by + a.engagement.endorsements.reviewed_by;
-								const bTotal = b.engagement.endorsements.signed_off_by + b.engagement.endorsements.acked_by + b.engagement.endorsements.reviewed_by;
+								const aTotal = (a.engagement?.endorsements?.signed_off_by || 0) + (a.engagement?.endorsements?.acked_by || 0) + (a.engagement?.endorsements?.reviewed_by || 0);
+								const bTotal = (b.engagement?.endorsements?.signed_off_by || 0) + (b.engagement?.endorsements?.acked_by || 0) + (b.engagement?.endorsements?.reviewed_by || 0);
 								return bTotal - aTotal;
 							});
 							break;
 						case 'signoffs':
-							filtered.sort((a, b) => b.engagement.endorsements.signed_off_by - a.engagement.endorsements.signed_off_by);
+							filtered.sort((a, b) => (b.engagement?.endorsements?.signed_off_by || 0) - (a.engagement?.endorsements?.signed_off_by || 0));
 							break;
 						case 'date':
 						default:
@@ -355,7 +356,7 @@ const recentSeries = patch_series.filter(series => series.engagement.days_since_
 					
 					// Update selected index to first visible card
 					if (filteredSeries.length > 0) {
-						const firstVisibleIndex = patch_series.findIndex(series => series.id === filteredSeries[0].id);
+						const firstVisibleIndex = (patch_series || []).findIndex(series => series.id === filteredSeries[0].id);
 						if (firstVisibleIndex !== -1) {
 							selectCard(firstVisibleIndex);
 						}
@@ -366,7 +367,9 @@ const recentSeries = patch_series.filter(series => series.engagement.days_since_
 				if (copyLinkBtn) {
 					copyLinkBtn.addEventListener('click', () => {
 						const currentUrl = new URL(window.location);
-						currentUrl.searchParams.set('series', patch_series[selectedIndex].id);
+						if (patch_series && patch_series[selectedIndex]) {
+							currentUrl.searchParams.set('series', patch_series[selectedIndex].id);
+						}
 						navigator.clipboard.writeText(currentUrl.toString()).then(() => {
 							copyLinkBtn.textContent = 'Copied!';
 							setTimeout(() => {
@@ -407,33 +410,34 @@ const recentSeries = patch_series.filter(series => series.engagement.days_since_
 				}
 
 				function updateAnalysisPanel(seriesIndex) {
-					const series = patch_series[seriesIndex];
-					const analysis = series.analysis;
+					const series = patch_series?.[seriesIndex];
+					if (!series) return;
+					const analysis = series.analysis || {};
 					
 					// Update basic info
-					document.getElementById('analysis-title').textContent = series.name;
-					document.getElementById('analysis-author').textContent = series.submitter.name;
-					document.getElementById('analysis-date').textContent = new Date(series.date).toLocaleDateString();
-					document.getElementById('analysis-patches').textContent = `${series.total_patches} patches`;
-					document.getElementById('analysis-version').textContent = series.engagement.version;
-					document.getElementById('analysis-days').textContent = series.engagement.days_since_posting;
+					document.getElementById('analysis-title').textContent = series.name || 'Unknown';
+					document.getElementById('analysis-author').textContent = series.submitter?.name || 'Unknown';
+					document.getElementById('analysis-date').textContent = series.date ? new Date(series.date).toLocaleDateString() : 'Unknown';
+					document.getElementById('analysis-patches').textContent = `${series.total_patches || 0} patches`;
+					document.getElementById('analysis-version').textContent = series.engagement?.version || 1;
+					document.getElementById('analysis-days').textContent = series.engagement?.days_since_posting || 0;
 					
 					// Update status badge with color
 					const statusBadge = document.getElementById('analysis-status-badge');
-					statusBadge.textContent = analysis.status;
+					statusBadge.textContent = analysis.status || 'Unknown';
 					statusBadge.className = `badge badge-lg ${statusColors[analysis.status] || 'badge-neutral'}`;
 					
 					// Render markdown summary
 					const summaryContent = document.getElementById('analysis-summary-content');
-					summaryContent.innerHTML = renderMarkdown(analysis.summary);
+					summaryContent.innerHTML = renderMarkdown(analysis.summary || 'No analysis available.');
 					
 					// Update engagement metrics (emoji-based)
-					const endorsements = series.engagement.endorsements;
-					document.getElementById('signoffs-count').textContent = endorsements.signed_off_by;
-					document.getElementById('acks-count').textContent = endorsements.acked_by;
-					document.getElementById('reviews-count').textContent = endorsements.reviewed_by;
-					document.getElementById('tests-count').textContent = endorsements.tested_by;
-					document.getElementById('activity-age').textContent = `${series.engagement.days_since_posting} days since posting`;
+					const endorsements = series.engagement?.endorsements || {};
+					document.getElementById('signoffs-count').textContent = endorsements.signed_off_by || 0;
+					document.getElementById('acks-count').textContent = endorsements.acked_by || 0;
+					document.getElementById('reviews-count').textContent = endorsements.reviewed_by || 0;
+					document.getElementById('tests-count').textContent = endorsements.tested_by || 0;
+					document.getElementById('activity-age').textContent = `${series.engagement?.days_since_posting || 0} days since posting`;
 					
 					// Update issues section
 					const issuesCard = document.getElementById('issues-card');
@@ -448,11 +452,13 @@ const recentSeries = patch_series.filter(series => series.engagement.days_since_
 					}
 					
 					// Update external link
-					document.getElementById('patchwork-link').href = series.web_url;
+					document.getElementById('patchwork-link').href = series.web_url || '#';
 				}
 
 				// Initialize with first patch series
-				updateAnalysisPanel(0);
+				if (patch_series && patch_series.length > 0) {
+					updateAnalysisPanel(0);
+				}
 
 				function selectCard(index) {
 					// Remove selection from all cards
@@ -485,13 +491,16 @@ const recentSeries = patch_series.filter(series => series.engagement.days_since_
 						e.preventDefault();
 						selectCard(selectedIndex - 1);
 						cards[selectedIndex].scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-					} else if (e.key === 'ArrowDown' && selectedIndex < cards.length - 1) {
+					} else if (e.key === 'ArrowDown' && selectedIndex < (cards?.length || 0) - 1) {
 						e.preventDefault();
 						selectCard(selectedIndex + 1);
 						cards[selectedIndex].scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 					} else if (e.key === 'Enter') {
 						e.preventDefault();
-						window.open(patch_series[selectedIndex].web_url, '_blank');
+						const series = patch_series?.[selectedIndex];
+						if (series?.web_url) {
+							window.open(series.web_url, '_blank');
+						}
 					}
 				});
 			});
