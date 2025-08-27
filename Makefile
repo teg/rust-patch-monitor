@@ -13,23 +13,23 @@ dev-install: ## Install development dependencies
 	pip install black flake8 pre-commit
 
 test: ## Run all tests
-	python -m pytest test_rust_patch_monitor.py test_golden_masters.py -v
+	python3 -m pytest test_rust_patch_monitor.py test_golden_masters.py -v
 
 test-unit: ## Run unit tests only
-	python -m pytest test_rust_patch_monitor.py::TestEngagementAnalysis -v
-	python -m pytest test_rust_patch_monitor.py::TestXMLGeneration -v
-	python -m pytest test_rust_patch_monitor.py::TestCLIInterface -v
+	python3 -m pytest test_rust_patch_monitor.py::TestEngagementAnalysis -v
+	python3 -m pytest test_rust_patch_monitor.py::TestXMLGeneration -v
+	python3 -m pytest test_rust_patch_monitor.py::TestCLIInterface -v
 
 test-integration: ## Run integration tests only
-	python -m pytest test_rust_patch_monitor.py::TestPatchworkClient -v
+	python3 -m pytest test_rust_patch_monitor.py::TestPatchworkClient -v
 
 test-golden: ## Run golden master tests only
-	python -m pytest test_golden_masters.py::TestGoldenMasters -v
+	python3 -m pytest test_golden_masters.py::TestGoldenMasters -v
 
 test-cli: ## Test CLI functionality
-	python rust_patch_monitor.py --help
-	python rust_patch_monitor.py list-patches --help
-	python rust_patch_monitor.py analyze --help
+	python3 rust_patch_monitor.py --help
+	python3 rust_patch_monitor.py list-patches --help
+	python3 rust_patch_monitor.py analyze --help
 
 format: ## Format code with black
 	black rust_patch_monitor.py test_rust_patch_monitor.py test_golden_masters.py --line-length=120
@@ -70,4 +70,4 @@ dev-setup: dev-install ## Complete development setup
 	@echo "Run 'make check' to verify everything works."
 
 quick-test: ## Quick test run (unit tests only)
-	python -m pytest test_rust_patch_monitor.py::TestEngagementAnalysis test_rust_patch_monitor.py::TestXMLGeneration -v
+	python3 -m pytest test_rust_patch_monitor.py::TestEngagementAnalysis test_rust_patch_monitor.py::TestXMLGeneration -v
