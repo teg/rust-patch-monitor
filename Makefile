@@ -30,6 +30,8 @@ test-cli: ## Test CLI functionality
 	python3 rust_patch_monitor.py --help
 	python3 rust_patch_monitor.py list-patches --help
 	python3 rust_patch_monitor.py analyze --help
+	python3 rust_patch_monitor.py analyze-bulk --help
+	python3 rust_patch_monitor.py export-json --help
 
 format: ## Format code with black
 	black rust_patch_monitor.py test_rust_patch_monitor.py test_golden_masters.py --line-length=120
@@ -57,6 +59,7 @@ clean: ## Clean temporary files
 	rm -rf .pytest_cache
 	rm -rf .coverage
 	rm -rf htmlcov
+	rm -rf reports
 
 pre-commit: ## Run pre-commit checks
 	$(MAKE) format
@@ -71,3 +74,16 @@ dev-setup: dev-install ## Complete development setup
 
 quick-test: ## Quick test run (unit tests only)
 	python3 -m pytest test_rust_patch_monitor.py::TestEngagementAnalysis test_rust_patch_monitor.py::TestXMLGeneration -v
+
+# Bulk analysis targets
+reports: ## Generate reports for active PRs in last 14 days (includes web UI update)
+	python3 rust_patch_monitor.py analyze-bulk --days 14 --max-series 10 --summary-report
+
+reports-weekly: ## Generate weekly reports (7 days) with web UI update  
+	python3 rust_patch_monitor.py analyze-bulk --days 7 --max-series 5 --summary-report
+
+reports-custom: ## Generate reports for custom period (use DAYS=X to specify)
+	python3 rust_patch_monitor.py analyze-bulk --days $(DAYS) --max-series 10 --summary-report
+
+reports-fast: ## Generate reports without community comments (faster)
+	python3 rust_patch_monitor.py analyze-bulk --days 14 --max-series 10 --no-comments --summary-report
