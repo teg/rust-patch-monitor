@@ -13,6 +13,7 @@ from typing import List, Dict, Optional
 import re
 import anthropic
 import json
+import os
 
 
 @dataclass
@@ -215,6 +216,21 @@ class ClaudeAnalyzer:
     def __init__(self, api_key: str):
         self.client = anthropic.Client(api_key=api_key)
 
+    def _load_prompt_template(self) -> str:
+        """Load the prompt template from the external file"""
+        # Get the directory of the current script
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        template_path = os.path.join(script_dir, "prompt_template.txt")
+
+        try:
+            with open(template_path, "r", encoding="utf-8") as f:
+                return f.read()
+        except FileNotFoundError:
+            # Fallback to inline prompt if template file is missing
+            raise FileNotFoundError(f"Prompt template file not found at {template_path}")
+        except Exception as e:
+            raise Exception(f"Error reading prompt template: {e}")
+
     def _analyze_engagement(self, series: PatchSeries, patches: List[Patch]) -> Dict:
         """Analyze community engagement indicators from patches"""
         from datetime import datetime, timezone
@@ -416,62 +432,9 @@ class ClaudeAnalyzer:
   </patches>
 </patchset>"""
 
-        prompt = f"""
-        Analyze this Rust for Linux kernel patchset and provide a comprehensive markdown report.
-
-        {analysis_context}
-
-<analysis_request>
-  <output_format>markdown</output_format>
-  <target_audience>Director of Engineering familiar with Linux kernel development and Rust-for-Linux strategy,
-  but potentially unfamiliar with specific subsystems</target_audience>
-
-  <role>You are a technical adviser providing succinct executive briefings. The director needs to understand
-  what matters, why it matters, and be able to explain it to stakeholders. Assume deep kernel knowledge but
-  explain subsystem-specific details.</role>
-
-  <engagement_guidance>
-    <status_indicators>
-      - High version (v5+) + recent + many acks = "Ready for merge"
-      - Recent high version + endorsements + minimal discussion = "Mature/stable"
-      - Old posting (30+ days) + no acks + no activity = "Stalled"
-      - Recent v1 + active discussion = "Early development"
-      - Quality concerns in comments = "Needs attention"
-    </status_indicators>
-  </engagement_guidance>
-
-  <format_requirements>
-    <structure>
-      # Executive Brief: {series.name}
-
-      **Status**: [Ready for merge | Under review | Stalled | Quality concerns | Strategic development]
-      **Significance**: [Major advance | Incremental improvement | Bug fix | Infrastructure | Experiment]
-
-      ## What & Why
-      [2-3 sentences: what this does and why it matters to Rust-for-Linux]
-
-      ## Technical Context (expand if subsystem explanation needed)
-      [Subsystem-specific details, architecture differences, interaction with existing C code]
-
-      ## Issues & Conflicts (only if present)
-      [Problems requiring director attention: quality concerns, community conflicts, blocking issues]
-
-      ## Stakeholder Summary (if strategically significant)
-      [Key talking points for external discussions]
-    </structure>
-
-    <guidelines>
-      - Skip sections that don't contain meaningful information
-      - Focus on what requires director attention or stakeholder communication
-      - Be succinct except in Technical Context where detail helps
-      - Highlight strategic advances in Rust-for-Linux adoption
-      - Flag quality issues, conflicts, or unusual patterns
-    </guidelines>
-  </format_requirements>
-</analysis_request>
-
-Provide an executive brief following the structure above, including only sections with meaningful content.
-        """
+        # Load prompt template and format it with context
+        prompt_template = self._load_prompt_template()
+        prompt = prompt_template.format(analysis_context=analysis_context, series=series)
 
         response = self.client.messages.create(
             model="claude-sonnet-4-20250514",
